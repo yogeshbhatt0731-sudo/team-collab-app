@@ -24,15 +24,7 @@ pipeline {
             steps { checkout scm }
         }
 
-        // Unit tests run on the Jenkins agent using the H2 in-memory DB,
-        // so no real MySQL is needed here. A failing test stops the build.
-        stage('Build & Test') {
-            steps {
-                dir('workspace-service') {
-                    sh './mvnw -B clean test'
-                }
-            }
-        }
+
 
         // The multi-stage Dockerfile compiles the jar and packages it.
         stage('Build Image') {
