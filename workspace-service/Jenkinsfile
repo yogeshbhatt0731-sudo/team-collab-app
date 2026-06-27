@@ -62,7 +62,7 @@ pipeline {
         // Only the develop branch deploys. Feature branches can build & push
         // but will NOT touch the running dev server.
         stage('Deploy To Dev') {
-            when { branch 'develop' }
+
             steps {
                 withCredentials([string(credentialsId: 'mysql-dev-password', variable: 'DB_PASS')]) {
                     sshagent(['deploy-server-key']) {
