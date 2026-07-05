@@ -1,0 +1,150 @@
+openapi: 3.0.0
+info:
+  title: Workspace Service API
+  version: 1.0.0
+  description: Consolidated API for the Workspace Service modular mono
+
+# --- SPRINT MODULE ---
+paths:
+  /api/projects/{projectId}/sprints:
+    post:
+      summary: Create a new sprint with a project
+      description: Validates project existence via ProjectReader and creates a sprint.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SprintRequest'
+      responses:
+        '201':
+          description: Sprint created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SprintResponse'
+        '404':
+          description: Project not found (assertExists failed)
+    # get all sprints with a project (optionally add filters)
+    get:
+      summary: List all sprints for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A list of sprints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SprintResponse'
+  # get  specific sprint data
+  /api/sprints/{sprintId}:
+    get:
+      summary: Get sprint details
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sprint details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SprintResponse'
+        '404':
+          description: Sprint not found
+  # update specific sprint status
+  /api/sprints/{sprintId}/status:
+    patch:
+      summary: Update sprint status
+      description: Transitions a sprint through its lifecycle (planned -> active -> completed).
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SprintStatusUpdateDTO'
+      responses:
+        '200':
+          description: Status updated successfully
+        '404':
+          description: Sprint not found
+
+components:
+  schemas:
+    SprintStatus:
+      type: string
+      enum: [PLANNED, ACTIVE, COMPLETED]
+
+    SprintRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Q3 Optimization Sprint"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        goal:
+          type: string
+          example: "Reduce API latency by 20%"
+
+    SprintResponse:
+      type: object
+      properties:
+        sprintId:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/SprintStatus'
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        goal:
+          type: string
+        createdBy:
+          type: integer
+          description: Logical reference to User in Auth Service
+        createdAt:
+          type: string
+          format: date-time
+
+    SprintStatusUpdateDTO:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/SprintStatus'
