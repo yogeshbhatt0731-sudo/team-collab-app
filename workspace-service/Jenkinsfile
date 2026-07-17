@@ -7,8 +7,8 @@ pipeline {
         IMAGE_TAG  = "${BUILD_NUMBER}"          // unique per build (1, 2, 3 ...)
 
         // ---- inst2 (deploy server) ----
-        DEV_SERVER = "35.173.179.185"
-        DEV_USER   = "ubuntu"
+        DEV_SERVER = "8.231.96.214"
+        DEV_USER   = "yogeshbhatt"
 
         // ---- dev container settings on inst2 ----
         APP_NAME   = "workspace-service-dev"
