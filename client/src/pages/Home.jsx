@@ -1,35 +1,29 @@
-import { Alert, Box, Button, CircularProgress, Stack, Typography, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 import Header from '../components/Header'
 import QuickActions from '../components/QuickActions'
 import Sidebar from '../components/Sidebar'
 import WorkspaceDetailsPanel from '../components/WorkspaceDetailsPanel'
 import WorkspaceGrid from '../components/WorkspaceGrid'
 import ProfileEditModal from '../components/ProfileEditModal'
+import Modal from '../components/Modal'
 import { mockWorkspaces } from '../data/mockData'
 
 const defaultUser = {
-  id: '',
-  name: 'User',
-  firstName: 'User',
-  lastName: '',
-  email: '',
-  phone: '',
-  bio: '',
-  department: '',
-  location: '',
-  role: '',
+  id: '', name: 'User', firstName: 'User', lastName: '', email: '',
+  phone: '', bio: '', department: '', location: '', role: '',
 }
 
 const ACCENT_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA15E']
 
-function Home({ themeMode, onThemeModeChange }) {
+function Home() {
   const navigate = useNavigate()
   const [workspaces, setWorkspaces] = useState([])
   const [currentUser, setCurrentUser] = useState(defaultUser)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error] = useState('')
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [workspaceName, setWorkspaceName] = useState('')
   const [createError, setCreateError] = useState('')
@@ -42,25 +36,18 @@ function Home({ themeMode, onThemeModeChange }) {
       navigate('/login')
       return
     }
-
     const storedUser = localStorage.getItem('current_user')
-    if (storedUser) {
-      const user = JSON.parse(storedUser)
-      setCurrentUser(user)
-    }
-
+    if (storedUser) setCurrentUser(JSON.parse(storedUser))
     setWorkspaces(mockWorkspaces)
     setIsLoading(false)
   }, [token, navigate])
 
   const handleCreateWorkspace = () => {
     setCreateError('')
-
     if (!workspaceName.trim()) {
       setCreateError('Workspace name is required')
       return
     }
-
     if (workspaceName.length < 3) {
       setCreateError('Workspace name must be at least 3 characters')
       return
@@ -77,17 +64,11 @@ function Home({ themeMode, onThemeModeChange }) {
       projects: 0,
       members: 1,
     }
-
     mockWorkspaces.push(newWorkspace)
     setWorkspaces([...workspaces, newWorkspace])
-    
     setWorkspaceName('')
     setCreateError('')
     setOpenCreateDialog(false)
-  }
-
-  const handleEditProfile = () => {
-    setOpenProfileModal(true)
   }
 
   const handleSaveProfile = (profileData) => {
@@ -108,139 +89,80 @@ function Home({ themeMode, onThemeModeChange }) {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        bgcolor: 'background.default',
-        color: 'text.primary',
-      }}
-    >
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--app-bg)', color: 'var(--text)' }}>
       <Sidebar />
 
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Header 
-          userName={currentUser.name} 
-          onEditProfile={handleEditProfile}
-          onLogout={handleLogout}
-        />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <Header userName={currentUser.name} onEditProfile={() => setOpenProfileModal(true)} onLogout={handleLogout} />
 
-        <Box
-          component="main"
-          sx={{
-            flex: 1,
-            p: { xs: 2, sm: 3 },
-            display: 'flex',
-            gap: 3,
-            alignItems: 'flex-start',
-            flexDirection: { xs: 'column', xl: 'row' },
-          }}
-        >
-          <Stack spacing={3} sx={{ flex: 1, minWidth: 0, width: '100%' }}>
-            <Box>
-              <Typography variant="h4" sx={{ mb: 1 }}>
-                Welcome back, {currentUser.firstName}!
-              </Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 17 }}>
-                Manage your workspaces and projects effectively.
-              </Typography>
-            </Box>
+        <main style={{ flex: 1, padding: 24, display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div>
+              <h4 style={{ fontSize: '1.75rem', marginBottom: 8 }}>Welcome back, {currentUser.firstName}!</h4>
+              <p className="muted" style={{ fontSize: 17 }}>Manage your workspaces and projects effectively.</p>
+            </div>
 
-            {error ? (
-              <Alert
-                severity="error"
-                action={
-                  <Button color="inherit" size="small" onClick={() => window.location.reload()}>
-                    Retry
-                  </Button>
-                }
-              >
-                {error}
-              </Alert>
-            ) : null}
+            {error && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: 'var(--danger)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{error}</span>
+                <ButtonComponent cssClass="e-flat" onClick={() => window.location.reload()}>Retry</ButtonComponent>
+              </div>
+            )}
 
             {isLoading ? (
-              <Box
-                sx={{
-                  minHeight: 320,
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
-                <Stack spacing={1.5} sx={{ alignItems: 'center' }}>
-                  <CircularProgress size={30} />
-                  <Typography sx={{ color: 'text.secondary' }}>Loading workspaces...</Typography>
-                </Stack>
-              </Box>
+              <div style={{ minHeight: 320, display: 'grid', placeItems: 'center' }}>
+                <p className="muted">Loading workspaces...</p>
+              </div>
             ) : (
               <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="h5" sx={{ mb: 1 }}>
-                    Workspaces
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    onClick={() => setOpenCreateDialog(true)}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    + New Workspace
-                  </Button>
-                </Box>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                  <h5 style={{ fontSize: 22 }}>Workspaces</h5>
+                  <ButtonComponent cssClass="e-primary" onClick={() => setOpenCreateDialog(true)}>+ New Workspace</ButtonComponent>
+                </div>
                 <QuickActions />
                 <WorkspaceGrid workspaces={workspaces} />
               </>
             )}
-          </Stack>
+          </div>
 
-          <WorkspaceDetailsPanel
-            workspace={workspaces[0] || null}
-            projects={[]}
-          />
-        </Box>
-      </Box>
+          <WorkspaceDetailsPanel workspace={workspaces[0] || null} projects={[]} />
+        </main>
+      </div>
 
-      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.3rem' }}>
-          Create New Workspace
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem' }}>
-              Create a new workspace to organize your projects and collaborate with team members.
-            </Typography>
+      <Modal
+        open={openCreateDialog}
+        onClose={() => setOpenCreateDialog(false)}
+        title="Create New Workspace"
+        footer={
+          <>
+            <ButtonComponent cssClass="e-flat" onClick={() => setOpenCreateDialog(false)}>Cancel</ButtonComponent>
+            <ButtonComponent cssClass="e-primary" onClick={handleCreateWorkspace}>Create Workspace</ButtonComponent>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p className="muted" style={{ fontSize: 15 }}>
+            Create a new workspace to organize your projects and collaborate with team members.
+          </p>
+          {createError && (
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: 'var(--danger)', fontWeight: 600 }}>
+              {createError}
+            </div>
+          )}
+          <label>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Workspace Name</span>
+            <TextBoxComponent placeholder="e.g., Q2 Development Sprint" value={workspaceName} input={(e) => setWorkspaceName(e.value)} />
+          </label>
+        </div>
+      </Modal>
 
-            {createError && (
-              <Alert severity="error">{createError}</Alert>
-            )}
-
-            <TextField
-              fullWidth
-              label="Workspace Name"
-              placeholder="e.g., Q2 Development Sprint"
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              autoFocus
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenCreateDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateWorkspace}>
-            Create Workspace
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <ProfileEditModal 
+      <ProfileEditModal
         open={openProfileModal}
         onClose={() => setOpenProfileModal(false)}
         user={currentUser}
         onSave={handleSaveProfile}
       />
-    </Box>
+    </div>
   )
 }
 

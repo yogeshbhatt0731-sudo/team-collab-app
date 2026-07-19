@@ -1,14 +1,26 @@
-import { Box, Container, Grid, Paper, Typography, Button, Card, CardContent, Chip, Stack, Avatar, IconButton, Menu, MenuItem } from '@mui/material'
 import { useParams, useNavigate } from 'react-router-dom'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
+import { DropDownButtonComponent } from '@syncfusion/ej2-react-splitbuttons'
 import { getProjectById, getUserById, getTasksByProject, getTaskAssignees } from '../data/mockData'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
-import { useState } from 'react'
+
+// NOTE: this mock Kanban is a placeholder — it will be replaced by the
+// Syncfusion Board wired to the real /task API (see SYNCFUSION_MIGRATION.md).
+
+const statusColors = { TODO: '#FFA500', IN_PROGRESS: '#2196F3', COMPLETED: '#4CAF50' }
+const priorityColors = { LOW: '#4CAF50', MEDIUM: '#FFA500', HIGH: '#F44336', CRITICAL: '#8B0000' }
 
 function ProjectDetail() {
   const { workspaceId, projectId } = useParams()
   const navigate = useNavigate()
-  const [anchorEl, setAnchorEl] = useState(null)
-  const [selectedTaskId, setSelectedTaskId] = useState(null)
+
+  const cardMenuItems = [
+    { text: 'View Details' },
+    { text: 'Edit Task' },
+    { text: 'Assign to Me' },
+    { text: 'Move to...' },
+    { separator: true },
+    { text: 'Delete' },
+  ]
 
   const project = getProjectById(projectId)
   const tasks = getTasksByProject(projectId)
@@ -16,283 +28,141 @@ function ProjectDetail() {
 
   if (!project) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h4">Project not found</Typography>
-      </Container>
+      <div style={{ padding: 32 }}>
+        <h4 style={{ fontSize: '1.75rem' }}>Project not found</h4>
+      </div>
     )
   }
 
-  const statusColors = {
-    TODO: '#FFA500',
-    IN_PROGRESS: '#2196F3',
-    COMPLETED: '#4CAF50',
-  }
-
-  const priorityColors = {
-    LOW: '#4CAF50',
-    MEDIUM: '#FFA500',
-    HIGH: '#F44336',
-    CRITICAL: '#8B0000',
-  }
-
-  const handleMenuOpen = (e, taskId) => {
-    e.stopPropagation()
-    setAnchorEl(e.currentTarget)
-    setSelectedTaskId(taskId)
-  }
-
-  const handleMenuClose = () => {
-    setAnchorEl(null)
-    setSelectedTaskId(null)
-  }
-
-  const getTaskCountByStatus = (status) => tasks.filter((t) => t.status === status).length
+  const countByStatus = (status) => tasks.filter((t) => t.status === status).length
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
-      <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
-          <Button
-            variant="text"
-            onClick={() => navigate(`/workspace/${workspaceId}`)}
-            sx={{ mb: 2 }}
-          >
+    <div style={{ minHeight: '100vh', background: 'var(--app-bg)', padding: 32 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ marginBottom: 16 }}>
+          <ButtonComponent cssClass="e-flat" onClick={() => navigate(`/workspace/${workspaceId}`)}>
             ← Back to Workspace
-          </Button>
-          <Typography variant="h3" sx={{ mb: 1, fontWeight: 700 }}>
-            {project.name}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', mb: 2 }}>
-            Created by {creator?.name} on{' '}
-            {new Date(project.createdAt).toLocaleDateString()}
-          </Typography>
+          </ButtonComponent>
+        </div>
+        <h3 style={{ fontSize: '2rem', marginBottom: 8 }}>{project.name}</h3>
+        <p className="muted" style={{ marginBottom: 16 }}>
+          Created by {creator?.name} on {new Date(project.createdAt).toLocaleDateString()}
+        </p>
 
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <Chip
-              label={`Total Tasks: ${tasks.length}`}
-              variant="outlined"
-            />
-            <Chip
-              label={`In Progress: ${getTaskCountByStatus('IN_PROGRESS')}`}
-              sx={{ bgcolor: statusColors['IN_PROGRESS'], color: 'white' }}
-            />
-            <Chip
-              label={`Completed: ${getTaskCountByStatus('COMPLETED')}`}
-              sx={{ bgcolor: statusColors['COMPLETED'], color: 'white' }}
-            />
-          </Box>
-        </Box>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          <span className="chip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}>
+            Total Tasks: {tasks.length}
+          </span>
+          <span className="chip" style={{ background: statusColors.IN_PROGRESS, color: '#fff' }}>
+            In Progress: {countByStatus('IN_PROGRESS')}
+          </span>
+          <span className="chip" style={{ background: statusColors.COMPLETED, color: '#fff' }}>
+            Completed: {countByStatus('COMPLETED')}
+          </span>
+        </div>
 
-        <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-          Kanban Board
-        </Typography>
+        <h5 style={{ fontSize: 22, marginBottom: 24 }}>Kanban Board</h5>
 
-        <Grid container spacing={2}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           {['TODO', 'IN_PROGRESS', 'COMPLETED'].map((status) => (
-            <Grid item xs={12} sm={6} md={4} key={status}>
-              <Paper
-                sx={{
-                  p: 2,
-                  bgcolor: 'background.paper',
-                  border: `3px solid ${statusColors[status]}`,
-                  minHeight: 600,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: 700,
-                      color: statusColors[status],
-                      flex: 1,
-                    }}
-                  >
-                    {status.replace(/_/g, ' ')}
-                  </Typography>
-                  <Chip
-                    label={tasks.filter((t) => t.status === status).length}
-                    size="small"
-                    sx={{
-                      bgcolor: statusColors[status],
-                      color: 'white',
-                      fontWeight: 700,
-                    }}
-                  />
-                </Box>
+            <div
+              key={status}
+              style={{
+                padding: 16,
+                background: 'var(--surface)',
+                border: `3px solid ${statusColors[status]}`,
+                borderRadius: 12,
+                minHeight: 600,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <h6 style={{ flex: 1, color: statusColors[status] }}>{status.replace(/_/g, ' ')}</h6>
+                <span className="chip" style={{ background: statusColors[status], color: '#fff' }}>
+                  {countByStatus(status)}
+                </span>
+              </div>
 
-                <Stack spacing={1.5} sx={{ height: 'calc(100% - 60px)', overflowY: 'auto' }}>
-                  {tasks
-                    .filter((t) => t.status === status)
-                    .map((task) => {
-                      const assignees = getTaskAssignees(task.id)
-                      const daysLeft = Math.ceil(
-                        (new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24)
-                      )
-                      const isOverdue = daysLeft < 0
-                      const isDueSoon = daysLeft >= 0 && daysLeft <= 3
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {tasks.filter((t) => t.status === status).map((task) => {
+                  const assignees = getTaskAssignees(task.id)
+                  const daysLeft = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24))
+                  const isOverdue = daysLeft < 0
+                  const isDueSoon = daysLeft >= 0 && daysLeft <= 3
 
-                      return (
-                        <Card
-                          key={task.id}
-                          sx={{
-                            cursor: 'pointer',
-                            '&:hover': {
-                              boxShadow: 4,
-                              transform: 'translateY(-2px)',
-                            },
-                            transition: 'all 0.2s',
-                            borderLeft: `4px solid ${priorityColors[task.priority]}`,
-                            backgroundColor: isOverdue ? '#ffe6e6' : isDueSoon ? '#fff3e0' : 'background.paper',
-                          }}
-                          onClick={() => navigate(`/task/${task.id}`)}
-                        >
-                          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 }, position: 'relative' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  mb: 0.5,
-                                  flex: 1,
-                                  pr: 1,
-                                  lineHeight: 1.3,
-                                }}
-                              >
-                                {task.title}
-                              </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={(e) => handleMenuOpen(e, task.id)}
-                                sx={{ mt: -1, mr: -1 }}
-                              >
-                                <MoreVertIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'text.secondary',
-                                display: 'block',
-                                mb: 1,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {task.description.substring(0, 50)}...
-                            </Typography>
-
-                            <Box sx={{ display: 'flex', gap: 0.5, mb: 1, flexWrap: 'wrap' }}>
-                              <Chip
-                                label={task.priority}
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  bgcolor: priorityColors[task.priority],
-                                  color: 'white',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 600,
-                                }}
-                              />
-                              {isOverdue && (
-                                <Chip
-                                  label="Overdue"
-                                  size="small"
-                                  sx={{
-                                    height: 20,
-                                    bgcolor: '#F44336',
-                                    color: 'white',
-                                    fontSize: '0.7rem',
-                                  }}
-                                />
-                              )}
-                              {isDueSoon && !isOverdue && (
-                                <Chip
-                                  label={`${daysLeft}d`}
-                                  size="small"
-                                  sx={{
-                                    height: 20,
-                                    bgcolor: '#FFA500',
-                                    color: 'white',
-                                    fontSize: '0.7rem',
-                                  }}
-                                />
-                              )}
-                            </Box>
-
-                            {assignees.length > 0 && (
-                              <Box sx={{ display: 'flex', gap: -0.5 }}>
-                                {assignees.slice(0, 3).map((assignee) => (
-                                  <Avatar
-                                    key={assignee.id}
-                                    sx={{
-                                      width: 24,
-                                      height: 24,
-                                      bgcolor: 'primary.main',
-                                      fontSize: '0.7rem',
-                                      border: '2px solid white',
-                                      marginLeft: '-8px',
-                                      '&:first-of-type': { marginLeft: 0 },
-                                    }}
-                                  >
-                                    {assignee.name[0]}
-                                  </Avatar>
-                                ))}
-                                {assignees.length > 3 && (
-                                  <Avatar
-                                    sx={{
-                                      width: 24,
-                                      height: 24,
-                                      bgcolor: 'grey.400',
-                                      fontSize: '0.7rem',
-                                      border: '2px solid white',
-                                      marginLeft: '-8px',
-                                    }}
-                                  >
-                                    +{assignees.length - 3}
-                                  </Avatar>
-                                )}
-                              </Box>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-
-                  {!tasks.some((t) => t.status === status) && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: 'text.secondary',
-                        textAlign: 'center',
-                        py: 4,
+                  return (
+                    <div
+                      key={task.id}
+                      className="card"
+                      onClick={() => navigate(`/task/${task.id}`)}
+                      style={{
+                        position: 'relative',
+                        padding: 12,
+                        cursor: 'pointer',
+                        borderLeft: `4px solid ${priorityColors[task.priority]}`,
+                        background: isOverdue ? '#ffe6e6' : isDueSoon ? '#fff3e0' : 'var(--surface)',
+                        boxShadow: 'none',
                       }}
                     >
-                      No tasks
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div style={{ fontWeight: 600, flex: 1, paddingRight: 8, lineHeight: 1.3, fontSize: 14 }}>
+                          {task.title}
+                        </div>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <DropDownButtonComponent
+                            cssClass="tc-kebab"
+                            items={cardMenuItems}
+                            select={(a) => { if (a.item.text === 'View Details') navigate(`/task/${task.id}`) }}
+                          >⋮</DropDownButtonComponent>
+                        </span>
+                      </div>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={handleMenuClose}>View Details</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Edit Task</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Assign to Me</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Move to...</MenuItem>
-        <MenuItem onClick={handleMenuClose} sx={{ color: 'error.main' }}>
-          Delete
-        </MenuItem>
-      </Menu>
-    </Box>
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.description.substring(0, 50)}...
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+                        <span className="chip" style={{ height: 20, background: priorityColors[task.priority], color: '#fff', fontSize: '0.7rem' }}>
+                          {task.priority}
+                        </span>
+                        {isOverdue && (
+                          <span className="chip" style={{ height: 20, background: '#F44336', color: '#fff', fontSize: '0.7rem' }}>Overdue</span>
+                        )}
+                        {isDueSoon && !isOverdue && (
+                          <span className="chip" style={{ height: 20, background: '#FFA500', color: '#fff', fontSize: '0.7rem' }}>{daysLeft}d</span>
+                        )}
+                      </div>
+
+                      {assignees.length > 0 && (
+                        <div style={{ display: 'flex' }}>
+                          {assignees.slice(0, 3).map((assignee, i) => (
+                            <span
+                              key={assignee.id}
+                              className="avatar"
+                              style={{ width: 24, height: 24, fontSize: '0.7rem', border: '2px solid #fff', marginLeft: i === 0 ? 0 : -8 }}
+                            >
+                              {assignee.name[0]}
+                            </span>
+                          ))}
+                          {assignees.length > 3 && (
+                            <span className="avatar" style={{ width: 24, height: 24, fontSize: '0.7rem', background: '#94a3b8', border: '2px solid #fff', marginLeft: -8 }}>
+                              +{assignees.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {!tasks.some((t) => t.status === status) && (
+                  <p className="muted" style={{ textAlign: 'center', padding: '32px 0' }}>No tasks</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 

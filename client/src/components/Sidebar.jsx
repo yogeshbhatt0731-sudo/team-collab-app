@@ -1,10 +1,11 @@
-import { Box, Button, Stack, Typography } from '@mui/material'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { cloveColors } from '../theme'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 
 const navItems = [
   { label: 'Home', path: '/home' },
   { label: 'Workspaces', path: '/workspaces' },
+  { label: 'My Board', path: '/board' },
+  { label: 'Members', path: '/members' },
   { label: 'Settings', path: '/settings' },
 ]
 
@@ -12,80 +13,40 @@ function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isActive = (path) => {
-    if (path === '/home') return location.pathname === '/home'
-    return location.pathname.startsWith(path)
-  }
+  const isActive = (path) =>
+    path === '/home' ? location.pathname === '/home' : location.pathname.startsWith(path)
 
   return (
-    <Box
-      component="aside"
-      sx={{
-        width: { xs: '100%', md: 244 },
-        bgcolor: cloveColors.navy,
+    <aside
+      style={{
+        width: 244,
+        background: 'var(--navy)',
         color: '#cbd5e1',
-        px: 2,
-        py: 2.5,
+        padding: '20px 16px',
         display: 'flex',
-        flexDirection: { xs: 'row', md: 'column' },
-        alignItems: { xs: 'center', md: 'stretch' },
-        gap: 3,
+        flexDirection: 'column',
+        gap: 24,
       }}
     >
-      <Typography
-        variant="h6"
-        sx={{
-          color: 'white',
-          fontSize: 22,
-          lineHeight: 1,
-          letterSpacing: 0,
-          minWidth: { xs: 84, md: 'auto' },
-          cursor: 'pointer',
-          '&:hover': {
-            opacity: 0.8,
-          },
-        }}
+      <h6
         onClick={() => navigate('/home')}
+        style={{ color: '#fff', fontSize: 22, lineHeight: 1, cursor: 'pointer' }}
       >
         Team Collab App
-      </Typography>
+      </h6>
 
-      <Stack
-        component="nav"
-        direction={{ xs: 'row', md: 'column' }}
-        spacing={1}
-        sx={{ width: '100%', overflowX: { xs: 'auto', md: 'visible' } }}
-      >
-        {navItems.map((item) => {
-          const active = isActive(item.path)
-
-          return (
-            <Button
-              key={item.label}
-              disableElevation
-              onClick={() => navigate(item.path)}
-              sx={{
-                justifyContent: 'flex-start',
-                minWidth: { xs: 'max-content', md: 'auto' },
-                color: active ? '#ffffff' : '#94a3b8',
-                bgcolor: active ? 'rgba(37, 99, 235, 0.28)' : 'transparent',
-                border: '1px solid',
-                borderColor: active ? 'rgba(147, 197, 253, 0.28)' : 'transparent',
-                px: 1.5,
-                py: 1.1,
-                fontWeight: active ? 800 : 700,
-                '&:hover': {
-                  color: '#ffffff',
-                  bgcolor: active ? 'rgba(37, 99, 235, 0.34)' : 'rgba(148, 163, 184, 0.12)',
-                },
-              }}
-            >
-              {item.label}
-            </Button>
-          )
-        })}
-      </Stack>
-    </Box>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {navItems.map((item) => (
+          <ButtonComponent
+            key={item.label}
+            cssClass={`e-flat tc-nav ${isActive(item.path) ? 'tc-nav-active' : ''}`}
+            onClick={() => navigate(item.path)}
+          >
+            {item.label}
+          </ButtonComponent>
+        ))}
+      </nav>
+    </aside>
   )
 }
 

@@ -1,20 +1,7 @@
-import {
-  Box,
-  Button,
-  Checkbox,
-  Container,
-  CssBaseline,
-  FormControlLabel,
-  Grid,
-  Link as MuiLink,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-  Alert,
-} from '@mui/material'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
+import { ButtonComponent, CheckBoxComponent } from '@syncfusion/ej2-react-buttons'
 import { mockUsers } from '../data/mockData'
 
 function Login() {
@@ -31,14 +18,11 @@ function Login() {
       setError('Please enter both email and password')
       return
     }
-
     const user = mockUsers.find((u) => u.email === email)
-
     if (!user) {
       setError('User not found. Please check your email.')
       return
     }
-
     if (password.length < 6) {
       setError('Invalid password')
       return
@@ -46,194 +30,124 @@ function Login() {
 
     localStorage.setItem('clove_access_token', `token_${user.id}_${Date.now()}`)
     localStorage.setItem('current_user', JSON.stringify(user))
-    
     navigate('/home')
   }
 
   return (
-    <>
-      <CssBaseline />
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          background:
-            'linear-gradient(135deg, #f7f4ea 0%, #e7f0ff 45%, #d6efe3 100%)',
-          py: 6,
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f7f4ea 0%, #e7f0ff 45%, #d6efe3 100%)',
+        padding: 48,
+      }}
+    >
+      <div
+        className="card"
+        style={{
+          width: '100%',
+          maxWidth: 1000,
+          overflow: 'hidden',
+          borderRadius: 24,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 7fr)',
+          boxShadow: '0 28px 80px rgba(15, 23, 42, 0.12)',
         }}
       >
-        <Container maxWidth="lg">
-          <Paper
-            elevation={0}
-            sx={{
-              overflow: 'hidden',
-              borderRadius: 6,
-              border: '1px solid rgba(15, 23, 42, 0.08)',
-              boxShadow: '0 28px 80px rgba(15, 23, 42, 0.12)',
-            }}
-          >
-            <Grid container>
-              <Grid size={{ xs: 12, md: 5 }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    color: '#fffdf7',
-                    p: { xs: 4, md: 5 },
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    background:
-                      'linear-gradient(160deg, #0f172a 0%, #17324d 52%, #146c94 100%)',
-                  }}
-                >
-                  <Stack spacing={2.5}>
-                    <Box
-                      sx={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: '16px',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontWeight: 700,
-                        fontSize: '1.1rem',
-                        bgcolor: 'rgba(255,255,255,0.14)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                      }}
-                    >
-                      TC
-                    </Box>
-                    <Typography variant="overline" sx={{ letterSpacing: 2.4, opacity: 0.8 }}>
-                      Team Collab App
-                    </Typography>
-                    <Typography
-                      variant="h3"
-                      sx={{
-                        fontWeight: 700,
-                        lineHeight: 1.05,
-                        fontSize: { xs: '2rem', md: '2.6rem' },
-                      }}
-                    >
-                      Welcome back to your team workspace.
-                    </Typography>
-                    <Typography sx={{ maxWidth: 420, opacity: 0.86, lineHeight: 1.7 }}>
-                      Sign in to review updates, manage tasks, and keep your collaboration flowing
-                      without losing momentum.
-                    </Typography>
-                  </Stack>
+        {/* left panel */}
+        <div
+          style={{
+            color: '#fffdf7',
+            padding: 40,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: 40,
+            background: 'linear-gradient(160deg, #0f172a 0%, #17324d 52%, #146c94 100%)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                display: 'grid',
+                placeItems: 'center',
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                background: 'rgba(255,255,255,0.14)',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              TC
+            </div>
+            <div style={{ letterSpacing: 2.4, opacity: 0.8, fontSize: 12, textTransform: 'uppercase' }}>
+              Team Collab App
+            </div>
+            <h3 style={{ fontSize: '2.4rem', lineHeight: 1.05 }}>Welcome back to your team workspace.</h3>
+            <p style={{ maxWidth: 420, opacity: 0.86, lineHeight: 1.7 }}>
+              Sign in to review updates, manage tasks, and keep your collaboration flowing without losing momentum.
+            </p>
+          </div>
 
-                  <Stack spacing={1.5} sx={{ mt: 6 }}>
-                    <Typography sx={{ fontWeight: 600 }}>Everything in one place</Typography>
-                    <Typography sx={{ opacity: 0.82 }}>
-                      Projects, conversations, and team coordination built for everyday work.
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.7, mt: 2 }}>
-                      Demo: Use yogesh@example.com / password
-                    </Typography>
-                  </Stack>
-                </Box>
-              </Grid>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontWeight: 600 }}>Everything in one place</div>
+            <div style={{ opacity: 0.82 }}>Projects, conversations, and team coordination built for everyday work.</div>
+            <div style={{ opacity: 0.7, fontSize: 12, marginTop: 8 }}>Demo: Use yogesh@example.com / password</div>
+          </div>
+        </div>
 
-              <Grid size={{ xs: 12, md: 7 }}>
-                <Box
-                  component="form"
-                  noValidate
-                  onSubmit={handleLogin}
-                  sx={{
-                    p: { xs: 4, sm: 5 },
-                    backgroundColor: '#fffdfa',
-                  }}
-                >
-                  <Stack spacing={1} sx={{ mb: 4 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#162033' }}>
-                      Sign in
-                    </Typography>
-                    <Typography sx={{ color: 'text.secondary' }}>
-                      Use your email and password to access your account.
-                    </Typography>
-                  </Stack>
+        {/* form */}
+        <form noValidate onSubmit={handleLogin} style={{ padding: 40, background: '#fffdfa' }}>
+          <div style={{ marginBottom: 32 }}>
+            <h4 style={{ fontSize: '1.75rem', color: '#162033' }}>Sign in</h4>
+            <p className="muted" style={{ marginTop: 6 }}>Use your email and password to access your account.</p>
+          </div>
 
-                  {error && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                      {error}
-                    </Alert>
-                  )}
+          {error && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: 'rgba(220,38,38,0.1)',
+                color: 'var(--danger)',
+                fontWeight: 600,
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-                  <Stack spacing={2.5}>
-                    <TextField
-                      fullWidth
-                      required
-                      type="email"
-                      label="Email address"
-                      name="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                      fullWidth
-                      required
-                      type="password"
-                      label="Password"
-                      name="password"
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </Stack>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <label>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email address</span>
+              <TextBoxComponent type="email" value={email} input={(e) => setEmail(e.value)} />
+            </label>
+            <label>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Password</span>
+              <TextBoxComponent type="password" value={password} input={(e) => setPassword(e.value)} />
+            </label>
+          </div>
 
-                  <Box
-                    sx={{
-                      mt: 2,
-                      display: 'flex',
-                      alignItems: { xs: 'flex-start', sm: 'center' },
-                      justifyContent: 'space-between',
-                      gap: 1.5,
-                      flexDirection: { xs: 'column', sm: 'row' },
-                    }}
-                  >
-                    <FormControlLabel control={<Checkbox defaultChecked />} label="Remember me" />
-                    <MuiLink href="#" underline="hover" sx={{ fontWeight: 600, color: '#0f766e' }}>
-                      Forgot password?
-                    </MuiLink>
-                  </Box>
+          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <CheckBoxComponent label="Remember me" checked={true} />
+            <a href="#" style={{ fontWeight: 600, color: '#0f766e' }}>Forgot password?</a>
+          </div>
 
-                  <Stack spacing={2} sx={{ mt: 3 }}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      size="large"
-                      sx={{
-                        py: 1.5,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        borderRadius: 3,
-                        bgcolor: '#0f766e',
-                        '&:hover': { bgcolor: '#115e59' },
-                      }}
-                    >
-                      Sign in
-                    </Button>
-
-                    <Typography sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                      Don&apos;t have an account?{' '}
-                      <MuiLink
-                        component={RouterLink}
-                        to="/register"
-                        underline="hover"
-                        sx={{ fontWeight: 600, color: '#0f766e' }}
-                      >
-                        Create one
-                      </MuiLink>
-                    </Typography>
-                  </Stack>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Container>
-      </Box>
-    </>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+            <ButtonComponent cssClass="tc-teal tc-block" onClick={handleLogin}>Sign in</ButtonComponent>
+            <p className="muted" style={{ textAlign: 'center' }}>
+              Don&apos;t have an account?{' '}
+              <RouterLink to="/register" style={{ fontWeight: 600, color: '#0f766e' }}>Create one</RouterLink>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 

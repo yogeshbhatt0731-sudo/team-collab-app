@@ -1,110 +1,75 @@
-import { Box, Button, Paper, Stack, Typography } from '@mui/material'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 
 function WorkspaceDetailsPanel({ workspace, projects }) {
   if (!workspace) {
     return (
-      <Paper
-        component="aside"
-        elevation={0}
-        sx={{
-          width: { xs: '100%', xl: 336 },
-          p: 2.5,
-          border: '1px solid',
-          borderColor: 'divider',
-          boxShadow: '0 18px 44px rgba(15, 23, 42, 0.06)',
-        }}
-      >
-        <Typography variant="h6">No active workspace</Typography>
-        <Typography sx={{ color: 'text.secondary', mt: 1 }}>
+      <aside className="card" style={{ width: 336, padding: 20 }}>
+        <h6 style={{ fontSize: 18 }}>No active workspace</h6>
+        <p className="muted" style={{ marginTop: 8 }}>
           Create or join a workspace to see details here.
-        </Typography>
-      </Paper>
+        </p>
+      </aside>
     )
   }
 
   return (
-    <Paper
-      component="aside"
-      elevation={0}
-      sx={{
-        width: { xs: '100%', xl: 336 },
-        p: 2.5,
-        border: '1px solid',
-        borderColor: 'divider',
-        boxShadow: '0 18px 44px rgba(15, 23, 42, 0.06)',
-      }}
-    >
-      <Stack spacing={2.5}>
-        <Box>
-          <Typography sx={{ color: 'text.secondary', fontSize: 13, mb: 0.75 }}>
-            Active Workspace
-          </Typography>
-          <Typography variant="h5">{workspace.name}</Typography>
-          <Typography sx={{ color: 'text.secondary', mt: 1, lineHeight: 1.6 }}>
-            Owner workspace with {workspace.members} members and {workspace.projects} active
-            projects.
-          </Typography>
-        </Box>
+    <aside className="card" style={{ width: 336, padding: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>Active Workspace</div>
+          <h5 style={{ fontSize: 22 }}>{workspace.name}</h5>
+          <p className="muted" style={{ marginTop: 8, lineHeight: 1.6 }}>
+            Owner workspace with {workspace.members} members and {workspace.projects} active projects.
+          </p>
+        </div>
 
-        <Button variant="contained" size="large">
-          + Create Project
-        </Button>
+        <ButtonComponent cssClass="e-primary tc-block">+ Create Project</ButtonComponent>
 
-        <Box>
-          <Typography variant="h6" sx={{ fontSize: 18, mb: 1.5 }}>
-            Current Projects
-          </Typography>
+        <div>
+          <h6 style={{ fontSize: 18, marginBottom: 12 }}>Current Projects</h6>
 
           {projects.length === 0 ? (
-            <Box
-              sx={{
-                p: 1.5,
-                border: '1px dashed',
-                borderColor: 'divider',
-                borderRadius: 2,
-                bgcolor: '#fbfdff',
+            <div
+              style={{
+                padding: 12,
+                border: '1px dashed var(--border)',
+                borderRadius: 10,
+                background: 'var(--app-bg)',
               }}
             >
-              <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>
+              <p className="muted" style={{ fontSize: 14 }}>
                 No projects available from the workspace API yet.
-              </Typography>
-            </Box>
+              </p>
+            </div>
           ) : (
-            <Stack spacing={1.25}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {projects.map((project) => (
-              <Box
-                key={project.name}
-                sx={{
-                  p: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  bgcolor: '#fbfdff',
-                }}
-              >
-                <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                  <Box
-                    sx={{
-                      width: 9,
-                      height: 9,
-                      borderRadius: '50%',
-                      bgcolor: project.color,
-                    }}
+                <div
+                  key={project.name}
+                  style={{
+                    padding: 12,
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    background: 'var(--app-bg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <span
+                    style={{ width: 9, height: 9, borderRadius: '50%', background: project.color }}
                   />
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 700 }}>{project.name}</Typography>
-                    <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>
-                      {project.status}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Box>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{project.name}</div>
+                    <div className="muted" style={{ fontSize: 13 }}>{project.status}</div>
+                  </div>
+                </div>
               ))}
-            </Stack>
+            </div>
           )}
-        </Box>
-      </Stack>
-    </Paper>
+        </div>
+      </div>
+    </aside>
   )
 }
 
