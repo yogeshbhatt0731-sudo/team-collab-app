@@ -1,100 +1,97 @@
-import { Avatar, AvatarGroup, Box, Button, Grid, Paper, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 
 function WorkspaceGrid({ workspaces }) {
   const navigate = useNavigate()
   return (
-    <Box>
-      <Typography variant="h5" sx={{ mb: 2.25 }}>
-        Workspaces
-      </Typography>
+    <div>
+      <h5 style={{ fontSize: 22, marginBottom: 18 }}>Workspaces</h5>
 
       {workspaces.length === 0 ? (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            border: '1px dashed',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+        <div
+          className="card"
+          style={{ padding: 24, borderStyle: 'dashed', boxShadow: 'none' }}
+        >
+          <p className="muted">
+            No workspaces found. Create or join a workspace to get started.
+          </p>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 20,
           }}
         >
-          <Typography sx={{ color: 'text.secondary' }}>
-            No workspaces found. Create or join a workspace to get started.
-          </Typography>
-        </Paper>
-      ) : (
-      <Grid container spacing={2.5}>
-        {workspaces.map((workspace) => (
-          <Grid key={workspace.id} size={{ xs: 12, lg: 4 }}>
-            <Paper
-              elevation={0}
-              sx={{
-                height: '100%',
-                p: 2.5,
-                border: '1px solid',
-                borderColor: 'divider',
-                boxShadow: '0 16px 34px rgba(15, 23, 42, 0.05)',
+          {workspaces.map((workspace) => (
+            <div
+              key={workspace.id}
+              className="card"
+              style={{
+                padding: 20,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 18,
               }}
             >
-              <Stack spacing={2.2} sx={{ height: '100%' }}>
-                <Box>
-                  <Box
-                    sx={{
-                      width: 38,
-                      height: 5,
-                      borderRadius: 4,
-                      bgcolor: workspace.accent,
-                      mb: 2,
+              <div>
+                <div
+                  style={{
+                    width: 38,
+                    height: 5,
+                    borderRadius: 4,
+                    background: workspace.accent,
+                    marginBottom: 16,
+                  }}
+                />
+                <h6 style={{ fontSize: 18, lineHeight: 1.25 }}>
+                  {workspace.name} ({workspace.role})
+                </h6>
+              </div>
+
+              <div style={{ display: 'flex', gap: 6 }}>
+                {workspace.avatars.slice(0, 4).map((avatar) => (
+                  <span
+                    key={`${workspace.id}-${avatar}`}
+                    className="avatar"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      fontSize: 12,
+                      background: workspace.accent,
+                      border: '2px solid var(--surface)',
                     }}
-                  />
-                  <Typography variant="h6" sx={{ fontSize: 18, lineHeight: 1.25 }}>
-                    {workspace.name} ({workspace.role})
-                  </Typography>
-                </Box>
+                  >
+                    {avatar}
+                  </span>
+                ))}
+              </div>
 
-                <AvatarGroup max={4} sx={{ justifyContent: 'flex-end', flexDirection: 'row' }}>
-                  {workspace.avatars.map((avatar) => (
-                    <Avatar
-                      key={`${workspace.id}-${avatar}`}
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        fontSize: 12,
-                        bgcolor: workspace.accent,
-                        borderColor: 'background.paper',
-                      }}
-                    >
-                      {avatar}
-                    </Avatar>
-                  ))}
-                </AvatarGroup>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="muted" style={{ fontSize: 13 }}>Projects</div>
+                  <div style={{ fontWeight: 800, fontSize: 22 }}>{workspace.projects}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="muted" style={{ fontSize: 13 }}>Members</div>
+                  <div style={{ fontWeight: 800, fontSize: 22 }}>{workspace.members}</div>
+                </div>
+              </div>
 
-                <Stack direction="row" spacing={1.5}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>Projects</Typography>
-                    <Typography sx={{ fontWeight: 800, fontSize: 22 }}>{workspace.projects}</Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>Members</Typography>
-                    <Typography sx={{ fontWeight: 800, fontSize: 22 }}>{workspace.members}</Typography>
-                  </Box>
-                </Stack>
-
-                <Button 
-                  variant="outlined" 
-                  sx={{ mt: 'auto' }}
+              <div style={{ marginTop: 'auto' }}>
+                <ButtonComponent
+                  cssClass="e-outline tc-block"
                   onClick={() => navigate(`/workspace/${workspace.id}`)}
                 >
                   Go to Workspace
-                </Button>
-              </Stack>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+                </ButtonComponent>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
-    </Box>
+    </div>
   )
 }
 

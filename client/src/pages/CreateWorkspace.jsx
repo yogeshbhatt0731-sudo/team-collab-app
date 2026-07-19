@@ -1,18 +1,8 @@
-import {
-  Box,
-  Button,
-  Container,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Typography,
-  Stack,
-  Alert,
-} from '@mui/material'
 import { useState } from 'react'
+import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
+import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 import { mockWorkspaces } from '../data/mockData'
+import Modal from '../components/Modal'
 
 const ACCENT_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA15E']
 
@@ -22,12 +12,10 @@ function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreated }) {
 
   const handleCreate = () => {
     setError('')
-
     if (!workspaceName.trim()) {
       setError('Workspace name is required')
       return
     }
-
     if (workspaceName.length < 3) {
       setError('Workspace name must be at least 3 characters')
       return
@@ -49,44 +37,52 @@ function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreated }) {
 
     mockWorkspaces.push(newWorkspace)
     onWorkspaceCreated(newWorkspace)
-    
     setWorkspaceName('')
     setError('')
     onClose()
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700, fontSize: '1.3rem' }}>
-        Create New Workspace
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem' }}>
-            Create a new workspace to organize your projects and collaborate with team members.
-          </Typography>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Create New Workspace"
+      footer={
+        <>
+          <ButtonComponent cssClass="e-flat" onClick={onClose}>Cancel</ButtonComponent>
+          <ButtonComponent cssClass="e-primary" onClick={handleCreate}>Create Workspace</ButtonComponent>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <p className="muted" style={{ fontSize: 15 }}>
+          Create a new workspace to organize your projects and collaborate with team members.
+        </p>
 
-          {error && (
-            <Alert severity="error">{error}</Alert>
-          )}
+        {error && (
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: 'rgba(220,38,38,0.1)',
+              color: 'var(--danger)',
+              fontWeight: 600,
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-          <TextField
-            fullWidth
-            label="Workspace Name"
+        <label style={{ display: 'block' }}>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Workspace Name</span>
+          <TextBoxComponent
             placeholder="e.g., Q2 Development Sprint"
             value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            autoFocus
+            input={(e) => setWorkspaceName(e.value)}
           />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleCreate}>
-          Create Workspace
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </label>
+      </div>
+    </Modal>
   )
 }
 

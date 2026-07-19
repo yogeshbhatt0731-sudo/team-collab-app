@@ -1,1055 +1,303 @@
-import {
-    Alert,
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Divider,
-    FormControlLabel,
-    Grid,
-    Stack,
-    Switch,
-    TextField,
-    Typography,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-} from "@mui/material";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import NotificationsIcon from "@mui/icons-material/Notifications";
-import SecurityIcon from "@mui/icons-material/Security";
-import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
-import DeleteIcon from "@mui/icons-material/Delete";
-import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { SwitchComponent, ButtonComponent } from '@syncfusion/ej2-react-buttons'
+import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
+import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
+import Modal from '../components/Modal'
 
-const defaultUser = {
-    id: "",
-    name: "User",
-    firstName: "User",
-    email: "",
-    role: "",
-};
+const defaultUser = { id: '', name: 'User', firstName: 'User', email: '', role: '' }
 
-function Settings({ themeMode, onThemeModeChange }) {
-    const navigate = useNavigate();
-    const [currentUser, setCurrentUser] = useState(defaultUser);
-    const [editedUser, setEditedUser] = useState(defaultUser);
-    const [isEditing, setIsEditing] = useState(false);
-    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
-
-    // Notification settings
-    const [notificationSettings, setNotificationSettings] = useState(() => {
-        const saved = localStorage.getItem("notification_settings");
-        return saved
-            ? JSON.parse(saved)
-            : {
-                  emailNotifications: true,
-                  taskAssignments: true,
-                  comments: true,
-                  mentions: true,
-                  weeklyDigest: false,
-              };
-    });
-
-    // Privacy settings
-    const [privacySettings, setPrivacySettings] = useState(() => {
-        const saved = localStorage.getItem("privacy_settings");
-        return saved
-            ? JSON.parse(saved)
-            : {
-                  publicProfile: false,
-                  allowMessagesFromAnyone: true,
-                  showOnlineStatus: true,
-                  dataCollection: false,
-              };
-    });
-
-    const token = localStorage.getItem("clove_access_token");
-
-    useEffect(() => {
-        if (!token) {
-            navigate("/login");
-            return;
-        }
-
-        const storedUser = localStorage.getItem("current_user");
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            setCurrentUser(user);
-            setEditedUser(user);
-        }
-    }, [token, navigate]);
-
-    useEffect(() => {
-        localStorage.setItem(
-            "notification_settings",
-            JSON.stringify(notificationSettings),
-        );
-    }, [notificationSettings]);
-
-    useEffect(() => {
-        localStorage.setItem(
-            "privacy_settings",
-            JSON.stringify(privacySettings),
-        );
-    }, [privacySettings]);
-
-    const handleThemeToggle = () => {
-        onThemeModeChange(themeMode === "light" ? "dark" : "light");
-    };
-
-    const handleEditChange = (field, value) => {
-        setEditedUser({
-            ...editedUser,
-            [field]: value,
-        });
-    };
-
-    const handleSaveProfile = () => {
-        localStorage.setItem("current_user", JSON.stringify(editedUser));
-        setCurrentUser(editedUser);
-        setIsEditing(false);
-        setSuccessMessage("Profile updated successfully!");
-        setTimeout(() => setSuccessMessage(""), 3000);
-    };
-
-    const handleCancelEdit = () => {
-        setEditedUser(currentUser);
-        setIsEditing(false);
-    };
-
-    const handleNotificationChange = (setting) => {
-        setNotificationSettings({
-            ...notificationSettings,
-            [setting]: !notificationSettings[setting],
-        });
-        setSuccessMessage(`Notification preference updated!`);
-        setTimeout(() => setSuccessMessage(""), 3000);
-    };
-
-    const handlePrivacyChange = (setting) => {
-        setPrivacySettings({
-            ...privacySettings,
-            [setting]: !privacySettings[setting],
-        });
-        setSuccessMessage(`Privacy setting updated!`);
-        setTimeout(() => setSuccessMessage(""), 3000);
-    };
-
-    const handleConfirmDelete = () => {
-        localStorage.removeItem("current_user");
-        localStorage.removeItem("clove_access_token");
-        setOpenDeleteDialog(false);
-        navigate("/login");
-    };
-
-    return (
-        <Box
-            sx={{
-                minHeight: "100vh",
-                display: "flex",
-                bgcolor: "background.default",
-                color: "text.primary",
-            }}
-        >
-            <Sidebar />
-
-            <Box
-                sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                }}
-            >
-                <Header userName={currentUser.name} />
-
-                <Box
-                    component="main"
-                    sx={{
-                        flex: 1,
-                        p: { xs: 2, sm: 3 },
-                        overflowY: "auto",
-                    }}
-                >
-                    {/* Header */}
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h4" sx={{ mb: 1 }}>
-                            Settings
-                        </Typography>
-                        <Typography
-                            sx={{ color: "text.secondary", fontSize: 16 }}
-                        >
-                            Manage your profile, preferences, and account
-                            settings
-                        </Typography>
-                    </Box>
-
-                    {/* Success Message */}
-                    {successMessage && (
-                        <Alert severity="success" sx={{ mb: 3 }}>
-                            {successMessage}
-                        </Alert>
-                    )}
-
-                    {/* Main Settings Container */}
-                    <Box sx={{ maxWidth: 900 }}>
-                        {/* Profile Section */}
-                        <Card
-                            sx={{
-                                bgcolor: "background.paper",
-                                border: "1px solid",
-                                borderColor: "divider",
-                                boxShadow: "none",
-                                mb: 3,
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        mb: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                    }}
-                                >
-                                    <Box
-                                        sx={{
-                                            width: 4,
-                                            height: 24,
-                                            borderRadius: 1,
-                                            bgcolor: "primary.main",
-                                        }}
-                                    />
-                                    Profile Settings
-                                </Typography>
-
-                                <Divider sx={{ my: 2 }} />
-
-                                {/* Profile Info */}
-                                <Box sx={{ mt: 3 }}>
-                                    <Stack spacing={3}>
-                                        {/* Avatar Section */}
-                                        <Box
-                                            sx={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 3,
-                                            }}
-                                        >
-                                            <Avatar
-                                                sx={{
-                                                    width: 80,
-                                                    height: 80,
-                                                    fontSize: 32,
-                                                    bgcolor: "primary.main",
-                                                }}
-                                            >
-                                                {currentUser.name
-                                                    ?.charAt(0)
-                                                    ?.toUpperCase() || "?"}
-                                            </Avatar>
-                                            <Box>
-                                                <Typography
-                                                    variant="h6"
-                                                    sx={{ mb: 1 }}
-                                                >
-                                                    {currentUser.name}
-                                                </Typography>
-                                                <Typography
-                                                    sx={{
-                                                        color: "text.secondary",
-                                                        fontSize: 13,
-                                                    }}
-                                                >
-                                                    {currentUser.email}
-                                                </Typography>
-                                                <Button
-                                                    size="small"
-                                                    sx={{ mt: 1 }}
-                                                >
-                                                    Change Avatar
-                                                </Button>
-                                            </Box>
-                                        </Box>
-
-                                        <Divider />
-
-                                        {/* Edit Profile Form */}
-                                        {isEditing ? (
-                                            <>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Full Name"
-                                                    value={
-                                                        editedUser.name || ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleEditChange(
-                                                            "name",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    label="Email"
-                                                    type="email"
-                                                    value={
-                                                        editedUser.email || ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleEditChange(
-                                                            "email",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    label="Role"
-                                                    value={
-                                                        editedUser.role || ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleEditChange(
-                                                            "role",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                <Stack
-                                                    direction="row"
-                                                    spacing={2}
-                                                    sx={{ mt: 2 }}
-                                                >
-                                                    <Button
-                                                        variant="contained"
-                                                        onClick={
-                                                            handleSaveProfile
-                                                        }
-                                                        sx={{
-                                                            textTransform:
-                                                                "none",
-                                                            fontWeight: 600,
-                                                        }}
-                                                    >
-                                                        Save Changes
-                                                    </Button>
-                                                    <Button
-                                                        variant="outlined"
-                                                        onClick={
-                                                            handleCancelEdit
-                                                        }
-                                                        sx={{
-                                                            textTransform:
-                                                                "none",
-                                                            fontWeight: 600,
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                </Stack>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Box>
-                                                    <Typography
-                                                        sx={{
-                                                            color: "text.secondary",
-                                                            fontSize: 12,
-                                                            mb: 0.5,
-                                                        }}
-                                                    >
-                                                        Full Name
-                                                    </Typography>
-                                                    <Typography
-                                                        sx={{ fontWeight: 600 }}
-                                                    >
-                                                        {currentUser.name}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography
-                                                        sx={{
-                                                            color: "text.secondary",
-                                                            fontSize: 12,
-                                                            mb: 0.5,
-                                                        }}
-                                                    >
-                                                        Email
-                                                    </Typography>
-                                                    <Typography
-                                                        sx={{ fontWeight: 600 }}
-                                                    >
-                                                        {currentUser.email}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography
-                                                        sx={{
-                                                            color: "text.secondary",
-                                                            fontSize: 12,
-                                                            mb: 0.5,
-                                                        }}
-                                                    >
-                                                        Role
-                                                    </Typography>
-                                                    <Typography
-                                                        sx={{ fontWeight: 600 }}
-                                                    >
-                                                        {currentUser.role}
-                                                    </Typography>
-                                                </Box>
-                                                <Button
-                                                    variant="outlined"
-                                                    onClick={() =>
-                                                        setIsEditing(true)
-                                                    }
-                                                    sx={{
-                                                        textTransform: "none",
-                                                        fontWeight: 600,
-                                                        mt: 1,
-                                                    }}
-                                                >
-                                                    Edit Profile
-                                                </Button>
-                                            </>
-                                        )}
-                                    </Stack>
-                                </Box>
-                            </CardContent>
-                        </Card>
-
-                        {/* Theme & Appearance Section */}
-                        <Card
-                            sx={{
-                                bgcolor: "background.paper",
-                                border: "1px solid",
-                                borderColor: "divider",
-                                boxShadow: "none",
-                                mb: 3,
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        mb: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                    }}
-                                >
-                                    {themeMode === "light" ? (
-                                        <LightModeIcon
-                                            sx={{ color: "#f59e0b" }}
-                                        />
-                                    ) : (
-                                        <DarkModeIcon
-                                            sx={{ color: "#60a5fa" }}
-                                        />
-                                    )}
-                                    Theme & Appearance
-                                </Typography>
-
-                                <Divider sx={{ my: 2 }} />
-
-                                <Stack spacing={3} sx={{ mt: 3 }}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{
-                                                    fontWeight: 600,
-                                                    mb: 0.5,
-                                                }}
-                                            >
-                                                Dark Mode
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Switch between light and dark
-                                                theme
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={themeMode === "dark"}
-                                            onChange={handleThemeToggle}
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Typography
-                                        sx={{
-                                            color: "text.secondary",
-                                            fontSize: 12,
-                                        }}
-                                    >
-                                        Current Theme:{" "}
-                                        <strong>
-                                            {themeMode === "light"
-                                                ? "Light Mode"
-                                                : "Dark Mode"}
-                                        </strong>
-                                    </Typography>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        {/* Notification Preferences */}
-                        <Card
-                            sx={{
-                                bgcolor: "background.paper",
-                                border: "1px solid",
-                                borderColor: "divider",
-                                boxShadow: "none",
-                                mb: 3,
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        mb: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                    }}
-                                >
-                                    <NotificationsIcon sx={{ fontSize: 20 }} />
-                                    Notification Preferences
-                                </Typography>
-
-                                <Divider sx={{ my: 2 }} />
-
-                                <Stack spacing={2} sx={{ mt: 3 }}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Email Notifications
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Receive email updates about your
-                                                account
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                notificationSettings.emailNotifications
-                                            }
-                                            onChange={() =>
-                                                handleNotificationChange(
-                                                    "emailNotifications",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Task Assignments
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Get notified when tasks are
-                                                assigned to you
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                notificationSettings.taskAssignments
-                                            }
-                                            onChange={() =>
-                                                handleNotificationChange(
-                                                    "taskAssignments",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Comments & Updates
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Receive notifications for new
-                                                comments on your tasks
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                notificationSettings.comments
-                                            }
-                                            onChange={() =>
-                                                handleNotificationChange(
-                                                    "comments",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Mentions
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Notify me when someone mentions
-                                                me
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                notificationSettings.mentions
-                                            }
-                                            onChange={() =>
-                                                handleNotificationChange(
-                                                    "mentions",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Weekly Digest
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Receive a weekly summary of your
-                                                activities
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                notificationSettings.weeklyDigest
-                                            }
-                                            onChange={() =>
-                                                handleNotificationChange(
-                                                    "weeklyDigest",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        {/* Privacy & Security */}
-                        <Card
-                            sx={{
-                                bgcolor: "background.paper",
-                                border: "1px solid",
-                                borderColor: "divider",
-                                boxShadow: "none",
-                                mb: 3,
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        mb: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                    }}
-                                >
-                                    <PrivacyTipIcon sx={{ fontSize: 20 }} />
-                                    Privacy & Security
-                                </Typography>
-
-                                <Divider sx={{ my: 2 }} />
-
-                                <Stack spacing={2} sx={{ mt: 3 }}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Public Profile
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Make your profile visible to
-                                                other users
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                privacySettings.publicProfile
-                                            }
-                                            onChange={() =>
-                                                handlePrivacyChange(
-                                                    "publicProfile",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Allow Direct Messages
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Allow anyone to message you
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                privacySettings.allowMessagesFromAnyone
-                                            }
-                                            onChange={() =>
-                                                handlePrivacyChange(
-                                                    "allowMessagesFromAnyone",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Show Online Status
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Let others see when you are
-                                                online
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                privacySettings.showOnlineStatus
-                                            }
-                                            onChange={() =>
-                                                handlePrivacyChange(
-                                                    "showOnlineStatus",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            p: 2,
-                                            bgcolor: "action.hover",
-                                            borderRadius: 1,
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Analytics & Data Collection
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "text.secondary",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                Help us improve by sharing usage
-                                                analytics
-                                            </Typography>
-                                        </Box>
-                                        <Switch
-                                            checked={
-                                                privacySettings.dataCollection
-                                            }
-                                            onChange={() =>
-                                                handlePrivacyChange(
-                                                    "dataCollection",
-                                                )
-                                            }
-                                            color="primary"
-                                        />
-                                    </Box>
-
-                                    <Button
-                                        variant="outlined"
-                                        sx={{
-                                            textTransform: "none",
-                                            fontWeight: 600,
-                                            mt: 2,
-                                        }}
-                                    >
-                                        Change Password
-                                    </Button>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        {/* Danger Zone */}
-                        <Card
-                            sx={{
-                                bgcolor: "background.paper",
-                                border: "2px solid",
-                                borderColor: "error.main",
-                                boxShadow: "none",
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        mb: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                        color: "error.main",
-                                    }}
-                                >
-                                    <DeleteIcon sx={{ fontSize: 20 }} />
-                                    Danger Zone
-                                </Typography>
-
-                                <Divider sx={{ my: 2 }} />
-
-                                <Stack spacing={2} sx={{ mt: 3 }}>
-                                    <Box>
-                                        <Typography
-                                            sx={{ fontWeight: 600, mb: 1 }}
-                                        >
-                                            Delete Account
-                                        </Typography>
-                                        <Typography
-                                            sx={{
-                                                color: "text.secondary",
-                                                fontSize: 13,
-                                                mb: 2,
-                                            }}
-                                        >
-                                            Permanently delete your account and
-                                            all associated data. This action
-                                            cannot be undone.
-                                        </Typography>
-                                        <Button
-                                            variant="contained"
-                                            color="error"
-                                            onClick={() =>
-                                                setOpenDeleteDialog(true)
-                                            }
-                                            sx={{
-                                                textTransform: "none",
-                                                fontWeight: 600,
-                                            }}
-                                        >
-                                            Delete My Account
-                                        </Button>
-                                    </Box>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Box>
-                </Box>
-            </Box>
-
-            {/* Delete Account Confirmation Dialog */}
-            <Dialog
-                open={openDeleteDialog}
-                onClose={() => setOpenDeleteDialog(false)}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle
-                    sx={{
-                        fontWeight: 700,
-                        fontSize: "1.3rem",
-                        color: "error.main",
-                    }}
-                >
-                    Delete Account?
-                </DialogTitle>
-                <DialogContent>
-                    <Stack spacing={2} sx={{ mt: 2 }}>
-                        <Alert severity="error">
-                            <Typography sx={{ fontWeight: 600, mb: 1 }}>
-                                This action is permanent!
-                            </Typography>
-                            Deleting your account will:
-                            <ul style={{ marginTop: 8, marginBottom: 0 }}>
-                                <li>Remove all your personal data</li>
-                                <li>Delete all workspaces you own</li>
-                                <li>Remove you from all shared workspaces</li>
-                                <li>Cancel all active tasks and assignments</li>
-                            </ul>
-                        </Alert>
-                    </Stack>
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setOpenDeleteDialog(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="error"
-                        onClick={handleConfirmDelete}
-                    >
-                        Yes, Delete My Account
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
-    );
+function Toggle({ checked, onChange }) {
+  return <SwitchComponent checked={checked} change={() => onChange()} />
 }
 
-export default Settings;
+function SettingCard({ title, accent, danger, children }) {
+  return (
+    <div
+      className="card"
+      style={{ boxShadow: 'none', marginBottom: 24, padding: 24, border: danger ? '2px solid var(--danger)' : undefined }}
+    >
+      <h6 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, color: danger ? 'var(--danger)' : 'var(--text)' }}>
+        {accent && <span style={{ width: 4, height: 24, borderRadius: 2, background: 'var(--blue)' }} />}
+        {title}
+      </h6>
+      <hr className="divider" style={{ margin: '16px 0' }} />
+      {children}
+    </div>
+  )
+}
+
+function ToggleRow({ title, desc, checked, onChange }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: 16, background: 'rgba(148,163,184,0.1)', borderRadius: 8 }}>
+      <div>
+        <div style={{ fontWeight: 600 }}>{title}</div>
+        <div className="muted" style={{ fontSize: 13 }}>{desc}</div>
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  )
+}
+
+const NOTIF_ROWS = [
+  { key: 'emailNotifications', title: 'Email Notifications', desc: 'Receive email updates about your account' },
+  { key: 'taskAssignments', title: 'Task Assignments', desc: 'Get notified when tasks are assigned to you' },
+  { key: 'comments', title: 'Comments & Updates', desc: 'Receive notifications for new comments on your tasks' },
+  { key: 'mentions', title: 'Mentions', desc: 'Notify me when someone mentions me' },
+  { key: 'weeklyDigest', title: 'Weekly Digest', desc: 'Receive a weekly summary of your activities' },
+]
+
+const PRIVACY_ROWS = [
+  { key: 'publicProfile', title: 'Public Profile', desc: 'Make your profile visible to other users' },
+  { key: 'allowMessagesFromAnyone', title: 'Allow Direct Messages', desc: 'Allow anyone to message you' },
+  { key: 'showOnlineStatus', title: 'Show Online Status', desc: 'Let others see when you are online' },
+  { key: 'dataCollection', title: 'Analytics & Data Collection', desc: 'Help us improve by sharing usage analytics' },
+]
+
+const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }
+
+function Settings({ themeMode, onThemeModeChange }) {
+  const navigate = useNavigate()
+  const [currentUser, setCurrentUser] = useState(defaultUser)
+  const [editedUser, setEditedUser] = useState(defaultUser)
+  const [isEditing, setIsEditing] = useState(false)
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const [notificationSettings, setNotificationSettings] = useState(() => {
+    const saved = localStorage.getItem('notification_settings')
+    return saved ? JSON.parse(saved) : {
+      emailNotifications: true, taskAssignments: true, comments: true, mentions: true, weeklyDigest: false,
+    }
+  })
+
+  const [privacySettings, setPrivacySettings] = useState(() => {
+    const saved = localStorage.getItem('privacy_settings')
+    return saved ? JSON.parse(saved) : {
+      publicProfile: false, allowMessagesFromAnyone: true, showOnlineStatus: true, dataCollection: false,
+    }
+  })
+
+  const token = localStorage.getItem('clove_access_token')
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login')
+      return
+    }
+    const storedUser = localStorage.getItem('current_user')
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setCurrentUser(user)
+      setEditedUser(user)
+    }
+  }, [token, navigate])
+
+  useEffect(() => {
+    localStorage.setItem('notification_settings', JSON.stringify(notificationSettings))
+  }, [notificationSettings])
+
+  useEffect(() => {
+    localStorage.setItem('privacy_settings', JSON.stringify(privacySettings))
+  }, [privacySettings])
+
+  const flash = (msg) => {
+    setSuccessMessage(msg)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
+  const handleEditChange = (field, value) => setEditedUser({ ...editedUser, [field]: value })
+
+  const handleSaveProfile = () => {
+    localStorage.setItem('current_user', JSON.stringify(editedUser))
+    setCurrentUser(editedUser)
+    setIsEditing(false)
+    flash('Profile updated successfully!')
+  }
+
+  const handleNotificationChange = (setting) => {
+    setNotificationSettings({ ...notificationSettings, [setting]: !notificationSettings[setting] })
+    flash('Notification preference updated!')
+  }
+
+  const handlePrivacyChange = (setting) => {
+    setPrivacySettings({ ...privacySettings, [setting]: !privacySettings[setting] })
+    flash('Privacy setting updated!')
+  }
+
+  const handleConfirmDelete = () => {
+    localStorage.removeItem('current_user')
+    localStorage.removeItem('clove_access_token')
+    setOpenDeleteDialog(false)
+    navigate('/login')
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--app-bg)', color: 'var(--text)' }}>
+      <Sidebar />
+
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <Header userName={currentUser.name} />
+
+        <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+          <div style={{ marginBottom: 32 }}>
+            <h4 style={{ fontSize: '1.75rem', marginBottom: 8 }}>Settings</h4>
+            <p className="muted" style={{ fontSize: 16 }}>Manage your profile, preferences, and account settings</p>
+          </div>
+
+          {successMessage && (
+            <div style={{ marginBottom: 24, padding: '10px 14px', borderRadius: 8, background: 'rgba(22,163,74,0.12)', color: 'var(--success)', fontWeight: 600 }}>
+              {successMessage}
+            </div>
+          )}
+
+          <div style={{ maxWidth: 900 }}>
+            {/* Profile */}
+            <SettingCard title="Profile Settings" accent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                  <span className="avatar" style={{ width: 80, height: 80, fontSize: 32 }}>
+                    {currentUser.name?.charAt(0)?.toUpperCase() || '?'}
+                  </span>
+                  <div>
+                    <h6 style={{ fontSize: 18, marginBottom: 6 }}>{currentUser.name}</h6>
+                    <div className="muted" style={{ fontSize: 13 }}>{currentUser.email}</div>
+                    <div style={{ marginTop: 8 }}>
+                      <ButtonComponent cssClass="e-flat">Change Avatar</ButtonComponent>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="divider" />
+
+                {isEditing ? (
+                  <>
+                    <label>
+                      <span style={labelStyle}>Full Name</span>
+                      <TextBoxComponent value={editedUser.name || ''} input={(e) => handleEditChange('name', e.value)} />
+                    </label>
+                    <label>
+                      <span style={labelStyle}>Email</span>
+                      <TextBoxComponent type="email" value={editedUser.email || ''} input={(e) => handleEditChange('email', e.value)} />
+                    </label>
+                    <label>
+                      <span style={labelStyle}>Role</span>
+                      <TextBoxComponent value={editedUser.role || ''} input={(e) => handleEditChange('role', e.value)} />
+                    </label>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                      <ButtonComponent cssClass="e-primary" onClick={handleSaveProfile}>Save Changes</ButtonComponent>
+                      <ButtonComponent cssClass="e-outline" onClick={() => { setEditedUser(currentUser); setIsEditing(false) }}>Cancel</ButtonComponent>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {[
+                      ['Full Name', currentUser.name],
+                      ['Email', currentUser.email],
+                      ['Role', currentUser.role],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontWeight: 600 }}>{value}</div>
+                      </div>
+                    ))}
+                    <div style={{ alignSelf: 'flex-start' }}>
+                      <ButtonComponent cssClass="e-outline" onClick={() => setIsEditing(true)}>Edit Profile</ButtonComponent>
+                    </div>
+                  </>
+                )}
+              </div>
+            </SettingCard>
+
+            {/* Theme */}
+            <SettingCard title={`${themeMode === 'light' ? '☀️' : '🌙'} Theme & Appearance`}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <ToggleRow
+                  title="Dark Mode"
+                  desc="Switch between light and dark theme"
+                  checked={themeMode === 'dark'}
+                  onChange={() => onThemeModeChange(themeMode === 'light' ? 'dark' : 'light')}
+                />
+                <p className="muted" style={{ fontSize: 12 }}>
+                  Current Theme: <strong>{themeMode === 'light' ? 'Light Mode' : 'Dark Mode'}</strong>
+                </p>
+              </div>
+            </SettingCard>
+
+            {/* Notifications */}
+            <SettingCard title="🔔 Notification Preferences">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {NOTIF_ROWS.map((row) => (
+                  <ToggleRow
+                    key={row.key}
+                    title={row.title}
+                    desc={row.desc}
+                    checked={notificationSettings[row.key]}
+                    onChange={() => handleNotificationChange(row.key)}
+                  />
+                ))}
+              </div>
+            </SettingCard>
+
+            {/* Privacy */}
+            <SettingCard title="🔒 Privacy & Security">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {PRIVACY_ROWS.map((row) => (
+                  <ToggleRow
+                    key={row.key}
+                    title={row.title}
+                    desc={row.desc}
+                    checked={privacySettings[row.key]}
+                    onChange={() => handlePrivacyChange(row.key)}
+                  />
+                ))}
+                <div style={{ alignSelf: 'flex-start' }}>
+                  <ButtonComponent cssClass="e-outline">Change Password</ButtonComponent>
+                </div>
+              </div>
+            </SettingCard>
+
+            {/* Danger zone */}
+            <SettingCard title="⚠️ Danger Zone" danger>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Delete Account</div>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <ButtonComponent cssClass="e-danger" onClick={() => setOpenDeleteDialog(true)}>
+                  Delete My Account
+                </ButtonComponent>
+              </div>
+            </SettingCard>
+          </div>
+        </main>
+      </div>
+
+      <Modal
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Delete Account?"
+        footer={
+          <>
+            <ButtonComponent cssClass="e-flat" onClick={() => setOpenDeleteDialog(false)}>Cancel</ButtonComponent>
+            <ButtonComponent cssClass="e-danger" onClick={handleConfirmDelete}>Yes, Delete My Account</ButtonComponent>
+          </>
+        }
+      >
+        <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: 'var(--danger)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>This action is permanent!</div>
+          Deleting your account will:
+          <ul style={{ marginTop: 8, marginBottom: 0 }}>
+            <li>Remove all your personal data</li>
+            <li>Delete all workspaces you own</li>
+            <li>Remove you from all shared workspaces</li>
+            <li>Cancel all active tasks and assignments</li>
+          </ul>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+export default Settings
