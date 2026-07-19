@@ -7,6 +7,7 @@ import com.teamcollab.workspaceservice.sprint.entities.Sprint;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "task")
 @AttributeOverride(name = "id",column = @Column(name = "task_id"))
 @AttributeOverride(name = "createdAt",column = @Column(name = "created_at"))
+@ToString
 public class Task extends BaseEntity {
     // User 1 ---> * Task , cross microservice association
     @Column(name = "created_by", nullable = false, updatable = false)
