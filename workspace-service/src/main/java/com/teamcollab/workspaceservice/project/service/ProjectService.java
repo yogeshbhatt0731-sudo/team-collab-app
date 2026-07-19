@@ -1,7 +1,10 @@
 package com.teamcollab.workspaceservice.project.service;
 
 
+import com.teamcollab.workspaceservice.project.exception.ProjectNotFoundException;
 import com.teamcollab.workspaceservice.project.repository.ProjectRepository;
+
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,6 @@ public class ProjectService implements ProjectReader {
 
     @Override
     public void assertExists(Long id) {
-        
+    	if (!projectRepository.existsById(id)) throw new ProjectNotFoundException("Project with id "+ id + "Not found");
     }
 }

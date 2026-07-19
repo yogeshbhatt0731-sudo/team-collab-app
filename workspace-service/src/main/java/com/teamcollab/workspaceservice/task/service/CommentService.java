@@ -1,13 +1,17 @@
 package com.teamcollab.workspaceservice.task.service;
 
-import com.teamcollab.workspaceservice.task.repository.CommentRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.task.dto.TaskCommentResponseDTO;
 
-@Service
-@Transactional(readOnly = true)
-@RequiredArgsConstructor
-public class CommentService {
-    private final CommentRepository commentRepository;
+import java.util.List;
+
+public interface CommentService {
+
+	public ApiResponse addComment(Long taskId, String content);
+
+	public List<TaskCommentResponseDTO> getComments(Long taskId);
+
+	public ApiResponse updateComment(Long taskId, Long commentId, String content);
+
+	public ApiResponse deleteComment(Long commentId, Long taskId);
 }
