@@ -1,22 +1,20 @@
 package com.teamcollab.workspaceservice.project.service;
 
+import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.project.dtos.ProjectRequestDto;
+import com.teamcollab.workspaceservice.project.entities.Project;
 
-import com.teamcollab.workspaceservice.project.exception.ProjectNotFoundException;
-import com.teamcollab.workspaceservice.project.repository.ProjectRepository;
+import java.util.List;
 
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+public interface ProjectService {
+    public ApiResponse addProject(Long userId, Long workspaceId, ProjectRequestDto projectRequestDto);
 
-@Service
-@Transactional(readOnly = true)
-@RequiredArgsConstructor
-public class ProjectService implements ProjectReader {
-    private final ProjectRepository projectRepository;
+    public List<Project> getAllProjects(Long userId, Long workspaceId);
 
-    @Override
-    public void assertExists(Long id) {
-    	if (!projectRepository.existsById(id)) throw new ProjectNotFoundException("Project with id "+ id + "Not found");
-    }
+    public Project getProject(Long userId, Long projectId);
+
+    public ApiResponse updateProject(Long userId, Long projectId, ProjectRequestDto oldProject);
+
+    public ApiResponse deleteProject(Long userId, Long projectId);
 }

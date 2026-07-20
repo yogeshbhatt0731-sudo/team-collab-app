@@ -1,13 +1,25 @@
 package com.teamcollab.workspaceservice.workspace.service;
 
-import com.teamcollab.workspaceservice.workspace.repository.WorkspaceRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto;
+import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceRequestDto;
+import com.teamcollab.workspaceservice.workspace.entities.Workspace;
 
-@Service
-@Transactional(readOnly = true)
-@RequiredArgsConstructor
-public class WorkspaceService {
-    private final WorkspaceRepository workspaceRepository;
+import java.util.List;
+
+
+public interface WorkspaceService {
+
+	public boolean exists (Long workspaceId);
+
+	public ApiResponse addNewWorkspace(Long userId, WorkspaceRequestDto request);
+
+
+	public Workspace getWorkspace(Long workspaceId);
+
+	public List<WorkspaceDetailRespDto> getAllWorkspace(Long userId);
+
+	public ApiResponse updateWorkspace(Long workspaceId, WorkspaceRequestDto workspaceRequestDto);
+
+	ApiResponse deleteWorkspace(Long userId, Long workspaceId);
 }
