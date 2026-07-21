@@ -1,6 +1,7 @@
 package com.teamcollab.workspaceservice.workspace.Controller;
 
 
+import com.teamcollab.workspaceservice.common.security.UserContext;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceRequestDto;
 import com.teamcollab.workspaceservice.workspace.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/workspaces")
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final UserContext userContext;
 
     /*
      * Desc - Create Workspace
@@ -27,12 +29,11 @@ public class WorkspaceController {
      */
 
     @PostMapping
-    public ResponseEntity<?> createWorkspace(@RequestHeader("X-User-Id") Long userId,
-                                             @RequestBody WorkspaceRequestDto request){
+    public ResponseEntity<?> createWorkspace(@RequestBody WorkspaceRequestDto request){
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(workspaceService
-                        .addNewWorkspace(userId, request));
+                        .addNewWorkspace(userContext.getUserId(),request));
 
     }
 
@@ -63,9 +64,9 @@ public class WorkspaceController {
      */
 
     @GetMapping
-    public ResponseEntity<?> getAllWorkspaces(@RequestHeader("X-User-Id") Long userId){
+    public ResponseEntity<?> getAllWorkspaces(){
         return ResponseEntity.ok(workspaceService
-                .getAllWorkspace(userId));
+                .getAllWorkspace(userContext.getUserId()));
     }
 
     /*
@@ -94,8 +95,8 @@ public class WorkspaceController {
      */
 
     @DeleteMapping("/{workspaceId}")
-    public ResponseEntity<?> deleteWorkspace(@RequestHeader("X-User-Id") Long userId, @PathVariable Long workspaceId){
-        return ResponseEntity.ok(workspaceService.deleteWorkspace(userId, workspaceId));
+    public ResponseEntity<?> deleteWorkspace(@PathVariable Long workspaceId){
+        return ResponseEntity.ok(workspaceService.deleteWorkspace(userContext.getUserId(),workspaceId));
     }
 
 //    @GetMapping("/search")

@@ -1,65 +1,38 @@
 package com.teamcollab.workspaceservice.project.controller;
 
 
+import com.teamcollab.workspaceservice.common.security.UserContext;
 import com.teamcollab.workspaceservice.project.dtos.ProjectRequestDto;
 import com.teamcollab.workspaceservice.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
-@RequestMapping()
+@RequestMapping("/projects")
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final UserContext userContext;
 
-    /*
-     * Desc - Create Project
-     * URL - http://host:port/workspaces/{workspaceId}/projects
-     * Method - POST
-     * Payload - UserId, ProjectRequestDto
-     *    --name
-     * Resp -  Project creating response
-     *  failure -ApiResp-  err messg - Workspace not created
-     */
-
-    @PostMapping("/workspaces/{workspaceId}/projects")
-    public ResponseEntity<?> addProject(@RequestHeader("X-User-Id") Long userId,
-                                        @PathVariable Long workspaceId,
-                                        @RequestBody ProjectRequestDto projectRequestDto){
-        return ResponseEntity.status(HttpStatus.CREATED).body(projectService.addProject(userId, workspaceId, projectRequestDto));
-
-    }
-
-    @GetMapping("/workspaces/{workspaceId}/projects")
-    public ResponseEntity<?> getAllProjects(@RequestHeader("X-User-Id") Long userId,
-                                            @PathVariable Long workspaceId){
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> getProject(@PathVariable Long projectId){
         return ResponseEntity.status(HttpStatus.OK)
-                .body(projectService.getAllProjects(userId, workspaceId));
+                .body(projectService.getProject(userContext.getUserId(), projectId));
     }
 
-    @GetMapping("/projects/{projectId}")
-    public ResponseEntity<?> getProject(@RequestHeader("X-User-Id") Long userId,
-                                        @PathVariable Long projectId){
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(projectService.getProject(userId, projectId));
-    }
-
-    @PutMapping("/projects/{projectId}")
-    public ResponseEntity<?> updateProject(@RequestHeader("X-User-Id") Long userId,
-                                           @PathVariable Long projectId,
+    @PutMapping("/{projectId}")
+    public ResponseEntity<?> updateProject(@PathVariable Long projectId,
                                            @RequestBody ProjectRequestDto newProject){
         return ResponseEntity.status(HttpStatus.OK)
-                .body(projectService.updateProject(userId, projectId, newProject));
+                .body(projectService.updateProject(userContext.getUserId(), projectId, newProject));
     }
 
-    @DeleteMapping("/projects/{projectId}")
-    public ResponseEntity<?> deleteProject(@RequestHeader("X-User-Id") Long userId,
-                                           @PathVariable Long projectId){
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<?> deleteProject(@PathVariable Long projectId){
         return ResponseEntity.status(HttpStatus.OK)
-                .body(projectService.deleteProject(userId, projectId));
+                .body(projectService.deleteProject(userContext.getUserId(), projectId));
     }
 }
