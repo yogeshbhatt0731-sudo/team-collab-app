@@ -1,13 +1,23 @@
 package com.teamcollab.workspaceservice.feature.service;
 
-import com.teamcollab.workspaceservice.feature.repository.FeatureRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.feature.dto.FeatureRequestDTO;
+import com.teamcollab.workspaceservice.feature.dto.FeatureResponseDTO;
+import com.teamcollab.workspaceservice.feature.dto.FeatureStatusUpdateDTO;
+import com.teamcollab.workspaceservice.feature.entities.Feature;
 
-@Service
-@Transactional(readOnly = true)
-@RequiredArgsConstructor
-public class FeatureService {
-    private final FeatureRepository featureRepository;
+import java.util.List;
+
+public interface FeatureService {
+    Feature assertExists(Long featureId);
+
+    ApiResponse createFeature(FeatureRequestDTO featureRequestDTO);
+
+    List<FeatureResponseDTO> getAllFeatures(Long projectId);
+
+    FeatureResponseDTO getFeatureDetails(Long featureId);
+
+    ApiResponse updateFeatureStatus(Long featureId, FeatureStatusUpdateDTO featureStatusUpdateDTO);
+
+    ApiResponse deleteFeature(Long featureId);
 }
