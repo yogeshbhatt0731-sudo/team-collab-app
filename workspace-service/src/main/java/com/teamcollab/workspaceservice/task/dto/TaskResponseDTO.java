@@ -22,4 +22,5 @@ public class TaskResponseDTO {
 	private TaskStatus taskStatus;
 	private LocalDateTime dueDate;
 	private LocalDateTime createdAt;
+	private Long sprintId;
 }

@@ -12,7 +12,6 @@ public interface TaskService {
 
 	public  TaskResponseDTO getTask(Long taskId);
 
-	public List<TaskResponseDTO> getAllTasks();
 
 	public ApiResponse updateTaskById(Long taskId,TaskUpdateDTO taskUpdateDTO);
 
@@ -23,4 +22,6 @@ public interface TaskService {
 	public List<TaskAssigneeResponseDTO> getAssignees(Long taskId);
 
 	public ApiResponse deleteAssignee(Long taskId, Long userId);
+
+	public List<TaskResponseDTO> getTasksByProject(Long projectId);
 }

@@ -27,6 +27,8 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Override
     public ApiResponse addComment(Long taskId, String content) {
+        // TODO [AUTH]: verify userContext.getUserId() is a member of this task's project before commenting — 403 otherwise.
+        //             Author is already set from userContext (never from the body) — good; keep it that way under JWT.
         Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with taskId "+taskId+" not found!!"));
         Comment comment = new Comment();
         comment.setMyTask(task);
@@ -38,12 +40,14 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public List<TaskCommentResponseDTO> getComments(Long taskId) {
+        // TODO [AUTH]: verify userContext.getUserId() can view this task's project (member) — 403 otherwise.
         return commentRepository.getComments(taskId);
     }
 
     @Transactional
     @Override
     public ApiResponse updateComment(Long taskId, Long commentId, String content) {
+        // TODO [AUTH]: author-only guard below is only as strong as userContext (X-User-Id stub today; JWT later).
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new CommentNotFoundException("Comment with id "+commentId+" not found!!"));
         if(!comment.getUserId().equals(userContext.getUserId())||!comment.getMyTask().getId().equals(taskId))
             throw new ForbiddenException("You are not allowed to update comments for this task");
@@ -54,6 +58,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Override
     public ApiResponse deleteComment(Long commentId, Long taskId) {
+        // TODO [AUTH]: author-only guard below is only as strong as userContext (X-User-Id stub today; JWT later).
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new CommentNotFoundException("Comment with id "+commentId+" not found!!"));
         if(!comment.getUserId().equals(userContext.getUserId())||!comment.getMyTask().getId().equals(taskId))
             throw new ForbiddenException("You are not allowed to update comments for this task");

@@ -60,19 +60,12 @@ public class TaskController {
 		return ResponseEntity.ok(taskService.getTask(taskId));
 	}
 
-	/*
-	 * Desc - Get All Tasks for a particular project
-	 * Uri - /task
-	 * method - GET
-	 * uri variable - {task_id}
-	 * Resp - TaskResponseDTO
-	 *
-	 */
 
+	// GET /task?projectId=123
 	@GetMapping
-	public ResponseEntity<?> getAllTasks()
+	public ResponseEntity<?> getAllTasks(@RequestParam Long projectId)
 	{
-		return ResponseEntity.ok(taskService.getAllTasks());
+		return ResponseEntity.ok(taskService.getTasksByProject(projectId));
 	}
 
 
