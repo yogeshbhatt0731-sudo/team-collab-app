@@ -2,6 +2,7 @@ package com.teamcollab.workspaceservice.task.service;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.common.security.UserContext;
+import com.teamcollab.workspaceservice.project.entities.Project;
 import com.teamcollab.workspaceservice.project.service.ProjectService;
 import com.teamcollab.workspaceservice.task.dto.*;
 import com.teamcollab.workspaceservice.task.entities.*;
@@ -42,9 +43,9 @@ public class TaskServiceImpl implements TaskService{
 		// Create new Task entity
 		Task task = mapper.map(taskRequestDTO,Task.class);
 		
-		//todo - associate task with the project here , by making a cross module call to fetch project entity
-		// Project project = projectService.getProject(id);
-//		task.setMyProject(project);
+		//associate task with the project here , by making a cross module call to fetch project entity
+		Project project = projectService.getProject(userContext.getUserId(),taskRequestDTO.getProjectID());
+		task.setMyProject(project);
 		
 		//Associating Task with user , here we got the authenticated and authorized  user via cross service call
 		// TODO [AUTH]: once the task is linked to a project, verify userContext.getUserId() is a member of that

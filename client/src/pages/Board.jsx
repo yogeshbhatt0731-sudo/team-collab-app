@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import {useState, useRef, useEffect} from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KanbanComponent, ColumnsDirective, ColumnDirective } from '@syncfusion/ej2-react-kanban'
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
@@ -9,6 +9,7 @@ import TaskForm from '../components/TaskForm'
 import SprintForm from '../components/SprintForm'
 import FeatureForm from '../components/FeatureForm'
 import { TASKS, SPRINTS, FEATURES, CURRENT_USER_ID, featureById, memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
+import {listTasks} from "../services/taskService.js";
 
 const SPRINT_STATUS_COLOR = { PLANNED: '#64748b', ACTIVE: '#16a34a', COMPLETED: '#4f46e5' }
 const FEATURE_STATUS_COLOR = { PLANNED: '#64748b', IN_PROGRESS: '#2563eb', DONE: '#16a34a' }
@@ -65,6 +66,7 @@ function featurePill(status) {
 
 function Board() {
   const { projectId } = useParams()
+  console.log("ProjectId: ",projectId)
   const navigate = useNavigate()
 
   const [tasks, setTasks] = useState([])
@@ -78,8 +80,15 @@ function Board() {
   const [featureFormOpen, setFeatureFormOpen] = useState(false)
   const down = useRef({ x: 0, y: 0 })
 
-//Loading all tasks related to a particular project
+ const loadTasks = async () => {
+    const data  = await listTasks(projectId)
+   if(data) setTasks(data)
+ }
 
+//Loading all tasks related to a particular project
+  useEffect(() => {
+    loadTasks()
+  }, []);
 
 
   const isOwner = role === 'OWNER'

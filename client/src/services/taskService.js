@@ -8,9 +8,10 @@ const headers = {'X-User-Id':100}
 
 export async function listTasks(projectId) {
     try{
-        console.log("hey")
+
      const response = await  axios.get(config.BASE_URL+'/task',{headers,params:{projectId}})
-        console.log(response.data)
+
+        return response.data
     }
     catch(err){
         console.error('listTasks failed:', err.message)
