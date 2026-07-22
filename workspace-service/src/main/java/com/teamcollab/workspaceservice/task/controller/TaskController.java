@@ -13,7 +13,7 @@ import com.teamcollab.workspaceservice.task.service.CommentService;
 
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*")
+@CrossOrigin(origins = {"http://localhost:5173", "http://8.231.96.214"}, allowedHeaders = "*")
 @RestController
 @RequestMapping("/task")
 @RequiredArgsConstructor
@@ -60,19 +60,12 @@ public class TaskController {
 		return ResponseEntity.ok(taskService.getTask(taskId));
 	}
 
-	/*
-	 * Desc - Get All Tasks for a particular project
-	 * Uri - /task
-	 * method - GET
-	 * uri variable - {task_id}
-	 * Resp - TaskResponseDTO
-	 *
-	 */
 
+	// GET /task?projectId=123
 	@GetMapping
-	public ResponseEntity<?> getAllTasks()
+	public ResponseEntity<?> getAllTasks(@RequestParam Long projectId)
 	{
-		return ResponseEntity.ok(taskService.getAllTasks());
+		return ResponseEntity.ok(taskService.getTasksByProject(projectId));
 	}
 
 

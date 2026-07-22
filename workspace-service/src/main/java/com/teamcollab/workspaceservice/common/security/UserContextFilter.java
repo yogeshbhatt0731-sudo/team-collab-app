@@ -17,6 +17,10 @@ public class UserContextFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
+        // TODO [AUTH]: THE JWT SEAM. Today we trust a raw X-User-Id header — any client can set it.
+        //              Replace with: read the "Authorization: Bearer <jwt>" token, validate its
+        //              signature + expiry, and set userContext from the verified subject/claims.
+        //              Every "TODO [AUTH]" in the services assumes this is done. See backend-auth-todos.md.
         String id = request.getHeader("X-User-Id");
         if (id !=null)
         {

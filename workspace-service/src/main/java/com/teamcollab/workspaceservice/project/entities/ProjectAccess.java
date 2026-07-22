@@ -1,7 +1,12 @@
 package com.teamcollab.workspaceservice.project.entities;
 
 import com.teamcollab.workspaceservice.common.entity.Auditable;
-import jakarta.persistence.*;
+
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,11 +14,10 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(name = "project_access")
-@AttributeOverride(name = "createdAt",column = @Column(name = "granted_at"))
+@AttributeOverride(name = "createdAt", column = @Column(name = "granted_at"))
 public class ProjectAccess extends Auditable {
-    //injecting composite primary key as value type
-    @EmbeddedId
-    private WorkSpaceProjectUserId workSpaceProjectUserId;
-
+	// injecting composite primary key as value type
+	@EmbeddedId
+	private WorkSpaceProjectUserId workSpaceProjectUserId;
 
 }

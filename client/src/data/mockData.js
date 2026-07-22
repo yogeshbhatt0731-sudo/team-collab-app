@@ -61,9 +61,9 @@ export const mockUsers = [
 
 export const mockWorkspaces = [
   {
-    id: 'ws_001',
+    id: '1',
     name: 'CDAC Team Collaboration',
-    createdBy: 'usr_001',
+    createdBy: '100',
     createdAt: '2026-03-01T10:00:00Z',
     accent: '#FF6B6B',
     role: 'OWNER',
@@ -146,24 +146,24 @@ export const mockWorkspaceMembers = [
 
 export const mockProjects = [
   {
-    id: 'proj_001',
+    id: '1',
     name: 'Auth System',
-    workspaceId: 'ws_001',
-    createdBy: 'usr_001',
+    workspaceId: '1',
+    createdBy: '100',
     createdAt: '2026-04-01T10:00:00Z',
   },
   {
-    id: 'proj_002',
+    id: '2',
     name: 'Dashboard UI',
-    workspaceId: 'ws_001',
-    createdBy: 'usr_001',
+    workspaceId: '1',
+    createdBy: '100',
     createdAt: '2026-04-05T10:00:00Z',
   },
   {
-    id: 'proj_003',
+    id: '3',
     name: 'API Gateway',
-    workspaceId: 'ws_001',
-    createdBy: 'usr_002',
+    workspaceId: '1',
+    createdBy: '100',
     createdAt: '2026-04-10T10:00:00Z',
   },
   {
