@@ -1,6 +1,8 @@
 package com.teamcollab.workspaceservice.common.exception;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintStatusTransitionException;
+import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintUpdationException;
 import com.teamcollab.workspaceservice.task.exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,18 @@ public class GlobalExceptionHandler extends RuntimeException {
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<?> handleNotFoundException(NotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse("Failure",ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidSprintStatusTransitionException.class)
+    public ResponseEntity<?> handleIllegalSprintTranstitionException(InvalidSprintStatusTransitionException ex)
+    {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new ApiResponse("Failure",ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidSprintUpdationException.class)
+    public ResponseEntity<?> handleIllegalSprintUpdationException(InvalidSprintUpdationException ex)
+    {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new ApiResponse("Failure",ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalTaskTransitionException.class)
