@@ -46,6 +46,13 @@ public class SprintServiceImpl implements SprintService {
 
 
     @Override
+    public Sprint assertExists(Long sprintId) {
+        return sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new SprintNotFoundException(
+                        "Sprint with id: " + sprintId + " does not exist"));
+    }
+
+    @Override
     public ApiResponse createSprint(SprintRequestDTO sprintRequestDTO) {
 
         //todo- user-admin validation
@@ -89,9 +96,7 @@ public class SprintServiceImpl implements SprintService {
     @Override
     public SprintResponseDTO getSprintDetails(Long sprintId) {
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new SprintNotFoundException(
-                        "Sprint with id: " + sprintId + " does not exist"));
+        Sprint sprint = this.assertExists(sprintId);
 
         SprintResponseDTO responseDTO = (modelMapper.map(sprint, SprintResponseDTO.class));
         return responseDTO;
@@ -102,9 +107,11 @@ public class SprintServiceImpl implements SprintService {
     public ApiResponse updateSprintStatus(Long sprintId, SprintStatusUpdateDTO sprintStatusUpdateDTO) {
         //todo- admin check
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new SprintNotFoundException(
-                        "Sprint with id: " + sprintId + " does not exist"));
+//        Sprint sprint = sprintRepository.findById(sprintId)
+//                .orElseThrow(() -> new SprintNotFoundException(
+//                        "Sprint with id: " + sprintId + " does not exist"));
+        Sprint sprint = this.assertExists(sprintId);
+
         //sprint - persistent (managed) entity
 
         //sprint status transitions check
@@ -136,9 +143,10 @@ public class SprintServiceImpl implements SprintService {
     @Override
     public ApiResponse updateSprint(Long sprintId, SprintUpdateRequestDTO sprintUpdateRequestDTO) {
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new SprintNotFoundException(
-                        "Sprint with id: " + sprintId + " does not exist"));
+//        Sprint sprint = sprintRepository.findById(sprintId)
+//                .orElseThrow(() -> new SprintNotFoundException(
+//                        "Sprint with id: " + sprintId + " does not exist"));
+        Sprint sprint = this.assertExists(sprintId);
 
         if (!(sprint.getSprintStatus().equals(SprintStatus.PLANNED))) {
 
@@ -153,11 +161,9 @@ public class SprintServiceImpl implements SprintService {
     @Override
     public ApiResponse deleteSprint(Long sprintId) {
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new SprintNotFoundException(
-                        "Sprint with id: " + sprintId + " does not exist"));
+        Sprint sprint = this.assertExists(sprintId);
 
-        if (sprint.getSprintStatus() == SprintStatus.ACTIVE) {
+        if (sprint.getSprintStatus() == SprintStatus.ACTIVE || sprint.getSprintStatus() == COMPLETED) {
             throw new IllegalStateException("Active sprint cannot be deleted.");
         }
 
