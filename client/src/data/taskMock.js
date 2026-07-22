@@ -57,43 +57,71 @@ export const TYPE_COLOR = {
 
 export const TASKS = [
   {
-    id: 1, title: 'Implement password reset flow', status: 'TODO', taskType: 'STORY', taskPriority: 'MEDIUM',
+    id: 1, projectId: 'proj_001', sprintId: 1, featureId: 1, title: 'Implement password reset flow', status: 'TODO', taskType: 'STORY', taskPriority: 'MEDIUM',
     assignees: [100], commentCount: 0, dueDate: '2026-07-28', createdBy: 100, createdAt: '2026-07-10T09:00:00',
     description: 'Users should be able to request a reset link and set a new password. Cover token expiry and reuse.',
   },
   {
-    id: 2, title: 'Write auth integration tests', status: 'TODO', taskType: 'TASK', taskPriority: 'LOW',
+    id: 2, projectId: 'proj_001', sprintId: 1, featureId: 1, title: 'Write auth integration tests', status: 'TODO', taskType: 'TASK', taskPriority: 'LOW',
     assignees: [102], commentCount: 0, dueDate: '2026-07-30', createdBy: 100, createdAt: '2026-07-10T09:10:00',
     description: 'Cover login, register, refresh and logout with happy-path and failure cases.',
   },
   {
-    id: 3, title: 'Setup email verification service', status: 'IN_PROGRESS', taskType: 'STORY', taskPriority: 'HIGH',
+    id: 3, projectId: 'proj_001', sprintId: 1, featureId: 2, title: 'Setup email verification service', status: 'IN_PROGRESS', taskType: 'STORY', taskPriority: 'HIGH',
     assignees: [101, 102], commentCount: 4, dueDate: '2026-07-24', createdBy: 100, createdAt: '2026-07-09T14:00:00',
     description: 'Send a verification email on signup; expose a verify endpoint that flips the user flag.',
   },
   {
-    id: 4, title: 'JWT token generation and validation', status: 'IN_PROGRESS', taskType: 'TASK', taskPriority: 'HIGH',
+    id: 4, projectId: 'proj_001', sprintId: null, featureId: 2, title: 'JWT token generation and validation', status: 'IN_PROGRESS', taskType: 'TASK', taskPriority: 'HIGH',
     assignees: [101], commentCount: 2, dueDate: '2026-07-22', createdBy: 100, createdAt: '2026-07-09T15:00:00',
     description: 'Mint access tokens on login; validate locally in each service (no callback to Auth).',
   },
   {
-    id: 5, title: 'Create login page UI', status: 'IN_REVIEW', taskType: 'STORY', taskPriority: 'HIGH',
+    id: 5, projectId: 'proj_001', sprintId: null, title: 'Create login page UI', status: 'IN_REVIEW', taskType: 'STORY', taskPriority: 'HIGH',
     assignees: [103], commentCount: 2, dueDate: '2026-07-20', createdBy: 100, createdAt: '2026-07-08T11:00:00',
     description: 'Split-panel login screen with validation and error states. Matches the design system.',
   },
   {
-    id: 6, title: 'Password hashing implementation', status: 'DONE', taskType: 'TASK', taskPriority: 'HIGH',
+    id: 6, projectId: 'proj_002', sprintId: null, title: 'Password hashing implementation', status: 'DONE', taskType: 'TASK', taskPriority: 'HIGH',
     assignees: [101], commentCount: 2, dueDate: '2026-07-15', createdBy: 100, createdAt: '2026-07-05T10:00:00',
     description: 'BCrypt with an appropriate work factor; never store plaintext.',
   },
   {
-    id: 7, title: 'Database schema design', status: 'DONE', taskType: 'EPIC', taskPriority: 'CRITICAL',
+    id: 7, projectId: 'proj_002', sprintId: null, title: 'Database schema design', status: 'DONE', taskType: 'EPIC', taskPriority: 'CRITICAL',
     assignees: [100], commentCount: 1, dueDate: '2026-07-12', createdBy: 100, createdAt: '2026-07-02T09:00:00',
     description: 'Users, workspaces, projects, tasks, assignees, comments — FK order and indexes.',
   },
 ]
 
 export const taskById = (id) => TASKS.find((t) => t.id === Number(id))
+
+// The signed-in user (mock). WIRE: from current_user / the JWT subject.
+export const CURRENT_USER_ID = 100
+
+// Sprints belong to a project and have a lifecycle: PLANNED -> ACTIVE -> COMPLETED.
+// A task with sprint_id = null is in the BACKLOG. WIRE: GET /sprint?projectId=,
+// start/complete via a status PATCH, pull a task in via PATCH task.sprintId.
+export const SPRINT_STATUS = ['PLANNED', 'ACTIVE', 'COMPLETED']
+
+export const SPRINTS = [
+  { id: 1, projectId: 'proj_001', name: 'Sprint 4 — Auth Hardening', status: 'ACTIVE', startDate: '2026-07-14', endDate: '2026-07-28', goal: 'Harden auth: password reset, email verification, JWT.' },
+  { id: 2, projectId: 'proj_001', name: 'Sprint 5 — Notifications', status: 'PLANNED', startDate: null, endDate: null, goal: 'In-app + email notifications.' },
+  { id: 3, projectId: 'proj_002', name: 'Sprint 1 — Foundations', status: 'PLANNED', startDate: null, endDate: null, goal: '' },
+]
+
+// A task can optionally belong to a FEATURE (an epic that groups tasks; Task.feature_id, nullable).
+// Features are project-scoped with a lifecycle: PLANNED -> IN_PROGRESS -> DONE. They're ORTHOGONAL
+// to sprints — a feature's tasks can span several sprints and the backlog.
+// WIRE: GET /feature?projectId= ; status via a PATCH.
+export const FEATURE_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE']
+
+export const FEATURES = [
+  { id: 1, projectId: 'proj_001', name: 'Authentication', status: 'IN_PROGRESS' },
+  { id: 2, projectId: 'proj_001', name: 'Comments & Activity', status: 'PLANNED' },
+  { id: 3, projectId: 'proj_002', name: 'Foundations', status: 'PLANNED' },
+]
+
+export const featureById = (id) => FEATURES.find((f) => f.id === id)
 
 // Comments keyed by taskId (TaskCommentResponseDTO shape).
 export const COMMENTS = {

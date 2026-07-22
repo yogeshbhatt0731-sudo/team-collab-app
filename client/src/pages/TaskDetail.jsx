@@ -6,9 +6,10 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import CommentList from '../components/CommentList'
 import ActivityLog from '../components/ActivityLog'
+import TaskForm from '../components/TaskForm'
 import {
   taskById as tmTaskById, commentsByTask, activityByTask, memberById, MEMBERS,
-  STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION,
+  STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
 } from '../data/taskMock'
 import { getTaskById, getCommentsByTask, getTaskAssignees, getUserById, mockUsers } from '../data/mockData'
 
@@ -64,11 +65,14 @@ function TaskDetail() {
 
   const [status, setStatus] = useState('')
   const [assignees, setAssignees] = useState([])
+  const [editOpen, setEditOpen] = useState(false)
+  const [taskEdits, setTaskEdits] = useState(null) // local edit overlay (mock); WIRE: refetch instead
 
   useEffect(() => {
     if (view) {
       setStatus(view.task.status)
       setAssignees(view.assignees)
+      setTaskEdits(null) // drop any edit overlay when navigating to another task
     }
   }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,7 +88,16 @@ function TaskDetail() {
     )
   }
 
-  const { task } = view
+  // task with any local edits overlaid (mock). WIRE: after updateTask, refetch instead of overlaying.
+  const task = taskEdits ? { ...view.task, ...taskEdits } : view.task
+
+  // Save edits from the TaskForm. Mock: keep an overlay. WIRE: call the API then refetch.
+  const onSaveEdit = (values) => {
+    // keep both naming shapes so the chips (type/priority) and the form (taskType/taskPriority) stay in sync
+    setTaskEdits({ ...values, type: values.taskType, priority: values.taskPriority })
+    // WIRE: await updateTask(task.id, values); await loadTask()
+    setEditOpen(false)
+  }
 
   const changeStatus = (next) => {
     if (!next || next === status) return
@@ -115,8 +128,9 @@ function TaskDetail() {
         <Header userName="Yogesh Bhatt" />
 
         <main style={{ flex: 1, padding: 24 }}>
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <ButtonComponent cssClass="e-flat" onClick={() => navigate(-1)}>← Back</ButtonComponent>
+            <ButtonComponent cssClass="e-outline" onClick={() => setEditOpen(true)}>Edit Task</ButtonComponent>
           </div>
 
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -189,6 +203,24 @@ function TaskDetail() {
           </div>
         </main>
       </div>
+
+      {/* Edit-task dialog (Edit Task button). WIRE: onSaveEdit -> updateTask */}
+      <TaskForm
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={onSaveEdit}
+        task={{
+          title: task.title,
+          description: task.description,
+          taskPriority: task.taskPriority || task.priority,
+          taskType: task.taskType || task.type,
+          dueDate: task.dueDate,
+          sprintId: task.sprintId ?? null,
+          featureId: task.featureId ?? null,
+        }}
+        sprints={SPRINTS}
+        features={FEATURES}
+      />
     </div>
   )
 }

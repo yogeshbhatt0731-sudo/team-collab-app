@@ -1,1 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:4010'
+export const config = {
+    // BASE_URL:"http://8.231.96.214:8082"
+    BASE_URL: 'http://localhost:8080',
+}
