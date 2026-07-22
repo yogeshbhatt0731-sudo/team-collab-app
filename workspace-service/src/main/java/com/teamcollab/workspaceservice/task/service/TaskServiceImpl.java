@@ -2,6 +2,7 @@ package com.teamcollab.workspaceservice.task.service;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.common.security.UserContext;
+import com.teamcollab.workspaceservice.project.entities.Project;
 import com.teamcollab.workspaceservice.project.service.ProjectService;
 import com.teamcollab.workspaceservice.task.dto.*;
 import com.teamcollab.workspaceservice.task.entities.*;
@@ -42,11 +43,13 @@ public class TaskServiceImpl implements TaskService{
 		// Create new Task entity
 		Task task = mapper.map(taskRequestDTO,Task.class);
 		
-		//todo - associate task with the project here , by making a cross module call to fetch project entity
-		// Project project = projectService.getProject(id);
-//		task.setMyProject(project);
+		//associate task with the project here , by making a cross module call to fetch project entity
+		Project project = projectService.getProject(userContext.getUserId(),taskRequestDTO.getProjectID());
+		task.setMyProject(project);
 		
-		//Associating Task with user , here we got the authenticated and authorized  user via cross service call 
+		//Associating Task with user , here we got the authenticated and authorized  user via cross service call
+		// TODO [AUTH]: once the task is linked to a project, verify userContext.getUserId() is a member of that
+		//             project before creating (403 otherwise). Identity is the X-User-Id stub until JWT.
 		task.setCreatedBy(userContext.getUserId());
 		task.setTaskStatus(TaskStatus.TODO);
 		
@@ -58,7 +61,7 @@ public class TaskServiceImpl implements TaskService{
 
 	@Override
 	public TaskResponseDTO getTask(Long taskId) {
-
+		// TODO [AUTH]: verify userContext.getUserId() can access this task's project (member) — 403 otherwise.
 		TaskResponseDTO taskResponseDTO = taskRepository.findTaskById(taskId);
 		if(taskResponseDTO==null)
 			throw new TaskNotFoundException("Task with task id: "+taskId+" not found!");
@@ -68,13 +71,19 @@ public class TaskServiceImpl implements TaskService{
 	}
 
 	@Override
-	public List<TaskResponseDTO> getAllTasks() {
-		return taskRepository.findAllTasks();
+	public List<TaskResponseDTO> getTasksByProject(Long projectId) {
+		// TODO [AUTH]: verify userContext.getUserId() is a MEMBER of projectId before returning (403 if not).
+		//             Cheapest real check to add now — see backend-auth-todos.md. Identity is the X-User-Id
+		//             stub (UserContextFilter) until JWT populates userContext.
+		return taskRepository.findTasksByProject(projectId);
 	}
+
+
 
 	@Transactional
 	@Override
 	public ApiResponse updateTaskById(Long taskId,TaskUpdateDTO taskUpdateDTO) {
+		// TODO [AUTH]: verify userContext.getUserId() may edit this task (member / creator / assignee) — 403 otherwise.
 		// 1 . find the task with the given id
 		Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with "+taskId +" not found!!"));
 		// task - persistent (managed) entity
@@ -91,6 +100,7 @@ public class TaskServiceImpl implements TaskService{
 	@Transactional
 	@Override
 	public ApiResponse changeTaskStatusById(Long taskId, TaskStatusUpdateDTO taskStatusUpdateDTO) {
+		// TODO [AUTH]: verify userContext.getUserId() is a member/assignee allowed to move this task — 403 otherwise.
 		// 1 . find the task with the given id
 		Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with "+taskId +" not found!!"));
 		// task - persistent (managed) entity
@@ -105,6 +115,7 @@ public class TaskServiceImpl implements TaskService{
 	@Override
 	@Transactional
 	public ApiResponse assignTask(Long taskId, Long assigneeId) {
+		// TODO [AUTH]: verify userContext.getUserId() (acting user) may assign on this project (member/admin) — 403 otherwise.
 		if(!taskRepository.existsById(taskId))
 			throw new TaskNotFoundException("Task with "+taskId+" not found!!!");
 
@@ -122,16 +133,20 @@ public class TaskServiceImpl implements TaskService{
 
 	@Override
 	public List<TaskAssigneeResponseDTO> getAssignees(Long taskId) {
+		// TODO [AUTH]: verify userContext.getUserId() can access this task's project (member) — 403 otherwise.
 		return taskAssigneeRepository.findAllAssignee(taskId);
 	}
 
 	@Transactional
 	@Override
 	public ApiResponse deleteAssignee(Long taskId, Long userId) {
+		// TODO [AUTH]: verify userContext.getUserId() (acting user) may unassign on this project (member/admin) — 403 otherwise.
 		if(taskAssigneeRepository.getAssignee(userId,taskId)==null)
 			throw new InvalidUnAssignmentException("Trying to unassign something that is not assigned to "+userId);
 		return new ApiResponse("success","No of rows affected "+taskAssigneeRepository.deleteAssignee(userId,taskId));
 	}
+
+
 
 
 }

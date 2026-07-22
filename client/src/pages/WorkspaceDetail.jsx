@@ -16,9 +16,13 @@ function WorkspaceDetail() {
   const [selectedProject, setSelectedProject] = useState(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [projects, setProjects] = useState(() => getProjectsByWorkspace(workspaceId)) // WIRE: useProjects(workspaceId).data
+  const [projectFormOpen, setProjectFormOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState(null) // null = create mode
+  const [projectName, setProjectName] = useState('')
+  const [projectError, setProjectError] = useState('')
 
   const workspace = getWorkspaceById(workspaceId)
-  const projects = getProjectsByWorkspace(workspaceId)
   const creator = workspace ? getUserById(workspace.createdBy) : null
   const currentUser = mockUsers[0]
   const isOwner = workspace?.role === 'OWNER'
@@ -44,7 +48,7 @@ function WorkspaceDetail() {
     setFavorites(next)
   }
 
-  const projectMenuItems = (project) => [
+  const projectMenuItems = () => [
     { text: 'Open Project' },
     { text: 'Edit Project' },
     { text: 'Duplicate' },
@@ -56,8 +60,30 @@ function WorkspaceDetail() {
   const onProjectMenuSelect = (project, text) => {
     setSelectedProject(project)
     if (text === 'Open Project') navigate(`/workspace/${workspaceId}/project/${project.id}`)
+    else if (text === 'Edit Project') openEditProject(project)
+    else if (text === 'Members') navigate(`/workspace/${workspaceId}/members`)
     else if (text === 'Delete Project') setDeleteDialogOpen(true)
     else if (text === 'Leave Project') setLeaveDialogOpen(true)
+  }
+
+  const openCreateProject = () => { setEditingProject(null); setProjectName(''); setProjectError(''); setProjectFormOpen(true) }
+  const openEditProject = (project) => { setEditingProject(project); setProjectName(project.name); setProjectError(''); setProjectFormOpen(true) }
+
+  // Create or edit a project. Mock: mutate local state. WIRE: call the API then refetch.
+  const submitProject = () => {
+    if (!projectName.trim()) { setProjectError('Project name is required'); return }
+    const name = projectName.trim()
+    if (editingProject) {
+      setProjects((prev) => prev.map((p) => (p.id === editingProject.id ? { ...p, name } : p)))
+      // WIRE: await updateProject(editingProject.id, { name }); await loadProjects()
+    } else {
+      const newProject = { id: `proj_${Date.now()}`, name, createdBy: currentUser?.id, createdAt: new Date().toISOString(), workspaceId }
+      setProjects((prev) => [...prev, newProject])
+      // WIRE: await createProject({ name }, workspaceId); await loadProjects()
+    }
+    setProjectFormOpen(false)
+    setEditingProject(null)
+    setProjectName('')
   }
 
   return (
@@ -105,9 +131,9 @@ function WorkspaceDetail() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-              <ButtonComponent cssClass="e-outline">+ New Project</ButtonComponent>
-              <ButtonComponent cssClass="e-outline">Invite</ButtonComponent>
-              <ButtonComponent cssClass="e-outline">Settings</ButtonComponent>
+              <ButtonComponent cssClass="e-outline" onClick={openCreateProject}>+ New Project</ButtonComponent>
+              <ButtonComponent cssClass="e-outline" onClick={() => navigate(`/workspace/${workspaceId}/members`)}>Invite</ButtonComponent>
+              <ButtonComponent cssClass="e-outline" onClick={() => navigate(`/workspace/${workspaceId}/members`)}>Members</ButtonComponent>
             </div>
           </div>
         </div>
@@ -139,7 +165,7 @@ function WorkspaceDetail() {
               <p className="muted" style={{ marginBottom: 16 }}>
                 {searchTerm ? 'Try adjusting your search term' : 'Create a new project to get started'}
               </p>
-              <ButtonComponent cssClass="e-primary">+ Create Project</ButtonComponent>
+              <ButtonComponent cssClass="e-primary" onClick={openCreateProject}>+ Create Project</ButtonComponent>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -184,11 +210,11 @@ function WorkspaceDetail() {
                   </div>
 
                   <div style={{ padding: '8px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <ButtonComponent cssClass="e-primary" onClick={(e) => e.stopPropagation()}>Open</ButtonComponent>
+                    <ButtonComponent cssClass="e-primary" onClick={(e) => { e.stopPropagation(); navigate(`/workspace/${workspaceId}/project/${project.id}/board`) }}>Open Board</ButtonComponent>
                     <span onClick={(e) => e.stopPropagation()}>
                       <DropDownButtonComponent
                         cssClass="tc-kebab"
-                        items={projectMenuItems(project)}
+                        items={projectMenuItems()}
                         select={(args) => onProjectMenuSelect(project, args.item.text)}
                       >
                         ⋮
@@ -230,6 +256,29 @@ function WorkspaceDetail() {
         }
       >
         <p>Are you sure you want to leave <strong>{selectedProject?.name}</strong>? You can rejoin if you are invited again.</p>
+      </Modal>
+
+      <Modal
+        open={projectFormOpen}
+        onClose={() => setProjectFormOpen(false)}
+        title={editingProject ? 'Edit Project' : 'Create Project'}
+        width={480}
+        footer={
+          <>
+            <ButtonComponent cssClass="e-flat" onClick={() => setProjectFormOpen(false)}>Cancel</ButtonComponent>
+            <ButtonComponent cssClass="e-primary" onClick={submitProject}>{editingProject ? 'Save Changes' : 'Create Project'}</ButtonComponent>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {projectError && (
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: 'var(--danger)', fontWeight: 600 }}>{projectError}</div>
+          )}
+          <label>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Project Name</span>
+            <TextBoxComponent placeholder="e.g., Auth System" value={projectName} input={(e) => setProjectName(e.value)} />
+          </label>
+        </div>
       </Modal>
     </div>
   )

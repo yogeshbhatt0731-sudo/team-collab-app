@@ -20,13 +20,13 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
 	private LocalDateTime createdAt;
 	 */
 
-	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt)" +
+	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt,t.mySprint.id)" +
 			"from Task t where t.id=:id")
 	public TaskResponseDTO findTaskById(@Param("id") Long id);
 
-	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt)" +
-			"from Task t ")
-	public List<TaskResponseDTO> findAllTasks();
+	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt,t.mySprint.id)" +
+			"from Task t where t.myProject.id=:id ")
+	public List<TaskResponseDTO> findTasksByProject(@Param("id") Long id);
 
 
 }
