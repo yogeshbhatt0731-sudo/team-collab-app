@@ -78,6 +78,14 @@ public class TaskServiceImpl implements TaskService{
 		return taskRepository.findTasksByProject(projectId);
 	}
 
+	@Override
+	public List<TaskResponseDTO> getAssignedTasks() {
+		// "My Board": every task, across all projects, where the CURRENT user is an assignee.
+		// The user id comes from userContext (X-User-Id stub now, JWT later) — never from a
+		// request param, so a caller can only ever pull their OWN assigned tasks.
+		return taskRepository.findTasksAssignedTo(userContext.getUserId());
+	}
+
 
 
 	@Transactional

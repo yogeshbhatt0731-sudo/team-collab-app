@@ -24,4 +24,7 @@ public interface TaskService {
 	public ApiResponse deleteAssignee(Long taskId, Long userId);
 
 	public List<TaskResponseDTO> getTasksByProject(Long projectId);
+
+	// "My Board" — tasks assigned to the current user (no param: identity comes from userContext).
+	public List<TaskResponseDTO> getAssignedTasks();
 }

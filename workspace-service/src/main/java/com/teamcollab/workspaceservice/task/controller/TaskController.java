@@ -54,6 +54,15 @@ public class TaskController {
 	 * 
 	 */
 
+	// GET /task/assigned  ->  "My Board": tasks assigned to the current user (across all projects).
+	// No param — the user comes from X-User-Id (userContext). This is a LITERAL path, so Spring
+	// matches it before the {task_id} variable mapping below (it won't try to parse "assigned" as an id).
+	@GetMapping("assigned")
+	public ResponseEntity<?> getAssignedTasks()
+	{
+		return ResponseEntity.ok(taskService.getAssignedTasks());
+	}
+
 	@GetMapping("{task_id}")
 	public ResponseEntity<?> getTask(@PathVariable(name = "task_id") Long taskId)
 	{

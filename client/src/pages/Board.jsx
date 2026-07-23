@@ -8,8 +8,9 @@ import Header from '../components/Header'
 import TaskForm from '../components/TaskForm'
 import SprintForm from '../components/SprintForm'
 import FeatureForm from '../components/FeatureForm'
-import { TASKS, SPRINTS, FEATURES, CURRENT_USER_ID, featureById, memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
-import {listTasks} from "../services/taskService.js";
+import { toast } from 'react-toastify'
+import { SPRINTS, FEATURES, featureById, memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
+import { listTasks, listAssignedTasks, createTask, changeStatus } from "../services/taskService.js";
 
 const SPRINT_STATUS_COLOR = { PLANNED: '#64748b', ACTIVE: '#16a34a', COMPLETED: '#4f46e5' }
 const FEATURE_STATUS_COLOR = { PLANNED: '#64748b', IN_PROGRESS: '#2563eb', DONE: '#16a34a' }
@@ -45,7 +46,9 @@ function cardTemplate(task) {
             </span>
           ))}
         </div>
-        <span style={{ fontSize: 11, color: '#64748b' }}>{task.commentCount} 💬</span>
+        {/* commentCount + assignees aren't in the list DTO (TaskResponseDTO) — guard so cards don't show "undefined".
+            WIRE: add them to the list response, or fetch per-task, if you want avatars/counts on the board. */}
+        <span style={{ fontSize: 11, color: '#64748b' }}>{task.commentCount ?? 0} 💬</span>
       </div>
     </div>
   )
@@ -81,27 +84,33 @@ function Board() {
   const down = useRef({ x: 0, y: 0 })
 
  const loadTasks = async () => {
-    const data  = await listTasks(projectId)
-   if(data) setTasks(data)
+    // My Board (no project in the URL) -> tasks assigned to ME (GET /task/assigned).
+    // Project Board -> that one project's tasks (GET /task?projectId=).
+    // Note: we can't call listTasks(undefined) — the backend requires projectId and would 400.
+    const data = projectId ? await listTasks(projectId) : await listAssignedTasks()
+    if(data) setTasks(data)
  }
 
-//Loading all tasks related to a particular project
+//Loading all tasks related to a particular project (reload if the project in the URL changes)
   useEffect(() => {
     loadTasks()
-  }, []);
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const isOwner = role === 'OWNER'
 
   /* ---------- derived data ---------- */
-  const projectTasks = projectId ? tasks.filter((t) => t.projectId === projectId) : tasks
+  // listTasks(projectId) already returns only THIS project's tasks (server filters by ?projectId),
+  // and TaskResponseDTO has no projectId field, so we use the list as-is (no client-side re-filter).
+  const projectTasks = tasks
   const projectSprints = projectId ? sprints.filter((s) => s.projectId === projectId) : []
   const projectFeatures = projectId ? features.filter((f) => f.projectId === projectId) : []
   const activeSprint = projectSprints.find((s) => s.status === 'ACTIVE') || null
   const sprintTasks = activeSprint ? projectTasks.filter((t) => t.sprintId === activeSprint.id) : []
-  const backlogTasks = projectTasks.filter((t) => !t.sprintId) // sprint_id null = backlog
-  // My Board (no project): only tasks assigned to me. WIRE: a "tasks assigned to me" endpoint.
-  const myTasks = tasks.filter((t) => (t.assignees || []).includes(CURRENT_USER_ID))
+  const backlogTasks = tasks.filter((t) => !t.sprintId) // sprint_id null = backlog
+  // My Board (no project): the list is ALREADY only my tasks (GET /task/assigned filters by me),
+  // so no client-side assignee filter is needed — just show what came back.
+  const myTasks = tasks
 
   /* ---------- click vs drag on the Kanban ---------- */
   const onPointerDownCapture = (e) => { down.current = { x: e.clientX, y: e.clientY } }
@@ -111,24 +120,33 @@ function Board() {
     const el = e.target.closest('[data-taskid]')
     if (el) navigate(`/task/${el.getAttribute('data-taskid')}`)
   }
-  const onDragStop = (args) => {
+  const onDragStop = async (args) => {
+    // Syncfusion moved the card in the UI already; we just persist the new column.
+    // With keyField="taskStatus", the dropped card's taskStatus IS the new status.
     const card = args.data && args.data[0]
     if (!card) return
-    // WIRE: await changeStatus(card.id, card.status); on 422 args.cancel = true + toast
+    const ok = await changeStatus(card.id, card.taskStatus)  // PATCH /task/{id}/status
+    if (ok) toast.success('Status updated')
+    else await loadTasks()   // server said no (e.g. 422) -> reload = card snaps back
   }
 
-  /* ---------- mutations (mock; WIRE: call API then refetch) ---------- */
-  const onCreate = (values) => {
-    const newTask = {
-      id: Date.now(),
-      projectId: projectId || undefined,
-      sprintId: null, // new tasks land in the BACKLOG; the owner pulls them into a sprint
-      status: 'TODO', assignees: [], commentCount: 0,
-      createdBy: CURRENT_USER_ID, createdAt: new Date().toISOString(),
-      ...values,
+  /* ---------- task mutations (backend EXISTS -> real API + refetch) ---------- */
+  const onCreate = async (values) => {
+    // TaskRequestDTO wants: title, description, taskPriority, taskType, dueDate, projectID (capital ID).
+    // New tasks land in the BACKLOG (no sprint) — the owner pulls them into a sprint later.
+    const payload = {
+      title: values.title,
+      description: values.description,
+      taskPriority: values.taskPriority,
+      taskType: values.taskType,
+      dueDate: values.dueDate || null,
+      projectID: Number(projectId),   // route param is a string; backend field is a Long
     }
-    setTasks((prev) => [...prev, newTask])
-    // WIRE: await addTask({ ...values, projectID: projectId, sprintId: null }); await loadTasks()
+    const res = await createTask(payload)   // POST /task
+    if (res) {
+      toast.success('Task created')
+      await loadTasks()   // refetch so the new task shows up (server is source of truth)
+    }
     setFormOpen(false)
   }
 
@@ -184,7 +202,7 @@ function Board() {
               <p className="muted">All tasks assigned to you, across every project. <span style={{ fontSize: 12 }}>(WIRE: GET tasks assigned to me)</span></p>
             </div>
             <div onPointerDownCapture={onPointerDownCapture} onClickCapture={onClickCapture}>
-              <KanbanComponent id="my-board" keyField="status" dataSource={myTasks} cardSettings={{ headerField: 'id', template: cardTemplate }} dragStop={onDragStop}>
+              <KanbanComponent id="my-board" keyField="taskStatus" dataSource={myTasks} cardSettings={{ headerField: 'id', template: cardTemplate }} dragStop={onDragStop}>
                 <ColumnsDirective>
                   <ColumnDirective headerText={STATUS_LABEL.TODO} keyField="TODO" showItemCount={true} />
                   <ColumnDirective headerText={STATUS_LABEL.IN_PROGRESS} keyField="IN_PROGRESS" showItemCount={true} />
@@ -265,7 +283,7 @@ function Board() {
 
               {activeSprint && (
                 <div onPointerDownCapture={onPointerDownCapture} onClickCapture={onClickCapture}>
-                  <KanbanComponent id="task-board" keyField="status" dataSource={sprintTasks} cardSettings={{ headerField: 'id', template: cardTemplate }} dragStop={onDragStop}>
+                  <KanbanComponent id="task-board" keyField="taskStatus" dataSource={sprintTasks} cardSettings={{ headerField: 'id', template: cardTemplate }} dragStop={onDragStop}>
                     <ColumnsDirective>
                       <ColumnDirective headerText={STATUS_LABEL.TODO} keyField="TODO" showItemCount={true} />
                       <ColumnDirective headerText={STATUS_LABEL.IN_PROGRESS} keyField="IN_PROGRESS" showItemCount={true} />
@@ -289,11 +307,11 @@ function Board() {
                   {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setFormOpen(true)}>+ New Task</ButtonComponent>}
                 </div>
 
-                {tasks.length === 0 ? (
+                {backlogTasks.length === 0 ? (
                   <p className="muted" style={{ padding: '24px 0', textAlign: 'center' }}>Backlog is empty.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {tasks.map((t) => (
+                    {backlogTasks.map((t) => (
                       <div key={t.id} className="card" style={{ padding: 12, boxShadow: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/task/${t.id}`)}>
                           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t.title}</div>

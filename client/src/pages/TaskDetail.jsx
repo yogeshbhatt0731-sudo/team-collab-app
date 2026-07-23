@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { DropDownListComponent } from '@syncfusion/ej2-react-dropdowns'
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 import Sidebar from '../components/Sidebar'
@@ -8,75 +9,121 @@ import CommentList from '../components/CommentList'
 import ActivityLog from '../components/ActivityLog'
 import TaskForm from '../components/TaskForm'
 import {
-  taskById as tmTaskById, commentsByTask, activityByTask, memberById, MEMBERS,
-  STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
+  getTask, updateTask, changeStatus as changeStatusApi,
+  getAssignees, assignTask, unassignTask,
+  getComments, addComment, updateComment, deleteComment,
+} from '../services/taskService'
+import { getUsersByIds } from '../services/userService'
+import {
+  memberById, MEMBERS, STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
 } from '../data/taskMock'
-import { getTaskById, getCommentsByTask, getTaskAssignees, getUserById, mockUsers } from '../data/mockData'
 
+// We are user 100 (same value as the X-User-Id header the API sends). Swap for the JWT user later.
+const CURRENT_USER_ID = 100
+
+// tiny helper: "Rohit Kumar" -> "RK"  (used for the little round avatar badge)
 const initialsOf = (name = '') => name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || '?'
 
-// Resolve a task from either data source so both boards (taskMock /board and
-// mockData ProjectDetail) route here. WIRE: replace the whole thing with getTask(id).
-function resolveTask(taskId) {
-  const tm = tmTaskById(taskId)
-  if (tm) {
-    const assignees = (tm.assignees || []).map(memberById).filter(Boolean)
-    return {
-      task: { ...tm, type: tm.taskType, priority: tm.taskPriority },
-      statuses: STATUSES.map((s) => ({ value: s, text: STATUS_LABEL[s] })),
-      canTransition: (from, to) => CAN_TRANSITION[from]?.includes(to),
-      assignees: assignees.map((m) => ({ userId: m.userId, name: m.name, initials: m.initials, color: m.color })),
-      candidates: MEMBERS.filter((m) => !(tm.assignees || []).includes(m.userId)).map((m) => ({ value: m.userId, text: m.name })),
-      comments: commentsByTask(tm.id).map((c) => ({ id: c.commentId, userId: c.userId, content: c.content, createdAt: c.createdAt, updatedAt: c.updatedAt })),
-      activity: activityByTask(tm.id),
-      resolveUser: (id) => { const m = memberById(id); return m ? { name: m.name, initials: m.initials, color: m.color } : { name: 'Unknown', initials: '?', color: '#64748b' } },
-      resolveActor: (id) => ({ name: memberById(id)?.name || 'Someone' }),
-      currentUserId: 100,
-      creatorName: memberById(tm.createdBy)?.name,
-    }
-  }
-
-  const md = getTaskById(taskId)
-  if (md) {
-    const assigneeUsers = getTaskAssignees(md.id)
-    const assignedIds = assigneeUsers.map((u) => u.id)
-    const stored = JSON.parse(localStorage.getItem('current_user') || '{}')
-    return {
-      task: { ...md, type: md.type || 'TASK', priority: md.priority, status: md.status },
-      statuses: ['TODO', 'IN_PROGRESS', 'COMPLETED'].map((s) => ({ value: s, text: s.replace('_', ' ') })),
-      canTransition: () => true, // mockData has no FSM — allow; WIRE: server enforces 422
-      assignees: assigneeUsers.map((u) => ({ userId: u.id, name: u.name, initials: initialsOf(u.name), color: '#2563eb' })),
-      candidates: mockUsers.filter((u) => !assignedIds.includes(u.id)).map((u) => ({ value: u.id, text: u.name })),
-      comments: getCommentsByTask(md.id).map((c) => ({ id: c.id, userId: c.userId, content: c.content, createdAt: c.createdAt, updatedAt: c.updatedAt })),
-      activity: [{ id: 'act_created', actorId: md.createdBy, action: 'CREATED', detail: 'created this task', createdAt: md.createdAt }],
-      resolveUser: (id) => { const u = getUserById(id); return u ? { name: u.name, initials: initialsOf(u.name), color: '#2563eb' } : { name: 'Unknown', initials: '?', color: '#64748b' } },
-      resolveActor: (id) => ({ name: getUserById(id)?.name || 'Someone' }),
-      currentUserId: stored.id || 'usr_001',
-      creatorName: getUserById(md.createdBy)?.name,
-    }
-  }
-  return null
-}
+// status dropdown options, built once from the enum: { value we send, text we show }
+const statusOptions = STATUSES.map((s) => ({ value: s, text: STATUS_LABEL[s] }))
 
 function TaskDetail() {
-  const { taskId } = useParams()
+  const { taskId } = useParams()   // /task/:taskId  -> pull the id out of the URL
   const navigate = useNavigate()
-  const view = resolveTask(taskId)
 
-  const [status, setStatus] = useState('')
-  const [assignees, setAssignees] = useState([])
+  const [task, setTask] = useState(null)         // the one task (TaskResponseDTO)
+  const [status, setStatus] = useState('')       // current status, kept on its own so the dropdown feels snappy
+  const [assignees, setAssignees] = useState([]) // RAW list from the API: [{ userId, assignedAt }] — ids only, no names
+  const [comments, setComments] = useState([])   // comments mapped into the shape CommentList wants
+  const [users, setUsers] = useState({})         // id -> profile { id, name, ... } lifted from the AUTH service
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [taskEdits, setTaskEdits] = useState(null) // local edit overlay (mock); WIRE: refetch instead
 
-  useEffect(() => {
-    if (view) {
-      setStatus(view.task.status)
-      setAssignees(view.assignees)
-      setTaskEdits(null) // drop any edit overlay when navigating to another task
+  // ---------- loaders: the PAGE fetches, then drops the data into state ----------
+
+  // GET /task/{id}
+  const loadTask = async () => {
+    const data = await getTask(taskId)
+    if (data) {
+      setTask(data)
+      setStatus(data.taskStatus)   // note: the status field is called taskStatus, not status
+      setNotFound(false)
+    } else {
+      setTask(null)
+      setNotFound(true)
     }
+  }
+
+  // GET /task/{id}/assignees  ->  [{ userId, assignedAt }]   (again: just ids, no names!)
+  const loadAssignees = async () => {
+    const data = await getAssignees(taskId)
+    setAssignees(data || [])
+  }
+
+  // GET /task/{id}/comments  ->  keep only what CommentList needs, oldest comment first
+  const loadComments = async () => {
+    const data = await getComments(taskId)
+    setComments((data || [])
+      .slice()   // copy first so we don't sort the original array in place
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map((c) => ({ id: c.commentId, userId: c.userId, content: c.content, createdAt: c.createdAt, updatedAt: c.updatedAt })))
+  }
+
+  // Turn a bunch of user ids into real names by asking the AUTH service.
+  // We only fetch ids we DON'T already have, so we don't keep re-calling Auth for the same people.
+  const ensureUsers = async (ids) => {
+    const missing = ids.filter((id) => id != null && !users[id])
+    if (missing.length === 0) return
+    const fetched = await getUsersByIds(missing)   // [] if Auth isn't up yet -> we just fall back to the mock
+    if (fetched.length) {
+      setUsers((prev) => {
+        const next = { ...prev }
+        fetched.forEach((u) => { next[u.id] = u })   // merge new profiles into the map
+        return next
+      })
+    }
+  }
+
+  // First load: task + assignees + comments together (they don't need each other, so fire in parallel).
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    Promise.all([loadTask(), loadAssignees(), loadComments()]).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }   // ignore results if we navigated away mid-fetch
   }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!view) {
+  // Whenever assignees or comments change, gather every userId they mention and make sure
+  // we have that person's profile. THIS is the "lift the name from Auth" step.
+  useEffect(() => {
+    const ids = [...new Set([...assignees.map((a) => a.userId), ...comments.map((c) => c.userId)])]
+    if (ids.length) ensureUsers(ids)
+  }, [assignees, comments]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Given a userId, give back { name, initials, color } to show on screen.
+  // Try 3 sources in order:  (1) real Auth profile  (2) local MEMBERS mock  (3) a plain "User 101".
+  const resolveUser = (userId) => {
+    const u = users[userId]
+    if (u) return { userId, name: u.name, initials: initialsOf(u.name), color: u.avatarColor || '#2563eb' }
+    const m = memberById(userId)   // fallback while the Auth service isn't built yet
+    if (m) return { userId, name: m.name, initials: m.initials, color: m.color }
+    return { userId, name: `User ${userId}`, initials: initialsOf(String(userId)), color: '#64748b' }  // last resort
+  }
+
+  // ---------- render guards ----------
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--app-bg)' }}>
+        <Sidebar />
+        <div style={{ flex: 1, padding: 32 }}>Loading task…</div>
+      </div>
+    )
+  }
+
+  if (notFound || !task) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--app-bg)' }}>
         <Sidebar />
@@ -88,34 +135,83 @@ function TaskDetail() {
     )
   }
 
-  // task with any local edits overlaid (mock). WIRE: after updateTask, refetch instead of overlaying.
-  const task = taskEdits ? { ...view.task, ...taskEdits } : view.task
+  // ---------- actions: call the API, then REFETCH (server is the source of truth) ----------
 
-  // Save edits from the TaskForm. Mock: keep an overlay. WIRE: call the API then refetch.
-  const onSaveEdit = (values) => {
-    // keep both naming shapes so the chips (type/priority) and the form (taskType/taskPriority) stay in sync
-    setTaskEdits({ ...values, type: values.taskType, priority: values.taskPriority })
-    // WIRE: await updateTask(task.id, values); await loadTask()
+  // Save edits from TaskForm: PATCH /task/{id}, then reload to show the saved values.
+  const onSaveEdit = async (values) => {
+    const result = await updateTask(taskId, values)
+    if (result) {
+      toast.success('Task updated')
+      await loadTask()
+    }
     setEditOpen(false)
   }
 
-  const changeStatus = (next) => {
+  // PATCH /task/{id}/status. The client-side FSM check is only a quick fail-fast for nicer UX —
+  // the backend (TaskStatus.canTransitionTo) is the REAL guard and 422s an illegal move anyway.
+  const handleStatusChange = async (next) => {
     if (!next || next === status) return
-    if (!view.canTransition(status, next)) {
-      window.alert(`Illegal transition: ${status} → ${next} (server returns 422)`) // WIRE: toast
+    // block obviously-illegal moves right here with an error toast (saves a round trip)
+    if (!CAN_TRANSITION[status]?.includes(next)) {
+      toast.error(`Can't move ${STATUS_LABEL[status]} → ${STATUS_LABEL[next]}`)
       return
     }
-    setStatus(next) // WIRE: changeStatus(task.id, next)
+    const ok = await changeStatusApi(taskId, next)
+    if (ok) {
+      setStatus(next)
+      toast.success('Status updated')
+    } else {
+      // server said no (e.g. 422) -> reload so the dropdown snaps back to the real status
+      await loadTask()
+    }
   }
 
-  const removeAssignee = (userId) => setAssignees((prev) => prev.filter((a) => a.userId !== userId)) // WIRE: unassign
-  const addAssignee = (userId) => {
-    if (!userId || assignees.some((a) => a.userId === userId)) return
-    const found = view.candidates.find((c) => c.value === userId)
-    setAssignees((prev) => [...prev, { userId, name: found?.text, initials: initialsOf(found?.text || ''), color: '#2563eb' }]) // WIRE: assign
+  // who's already assigned -> so we don't offer them again in the "+ Add assignee" list
+  const assignedIds = assignees.map((a) => a.userId)
+  // WIRE: candidates should really come from the project's members list; using MEMBERS mock for now.
+  const candidates = MEMBERS.filter((m) => !assignedIds.includes(m.userId)).map((m) => ({ value: m.userId, text: m.name }))
+
+  const handleAddAssignee = async (userId) => {
+    if (!userId) return
+    const result = await assignTask(taskId, userId)   // POST /task/{id}/assignees { userId }
+    if (result) {
+      toast.success('Assigned')
+      await loadAssignees()
+    }
   }
 
-  const remaining = view.candidates.filter((c) => !assignees.some((a) => a.userId === c.value))
+  const handleRemoveAssignee = async (userId) => {
+    const ok = await unassignTask(taskId, userId)     // DELETE /task/{id}/assignees { userId }
+    if (ok) {
+      toast.success('Unassigned')
+      await loadAssignees()
+    }
+  }
+
+  const handleAddComment = async (content) => {
+    const result = await addComment(taskId, content)  // POST /task/{id}/comments { content }
+    if (result) {
+      toast.success('Comment added')
+      await loadComments()
+    }
+  }
+
+  const handleEditComment = async (commentId, content) => {
+    const result = await updateComment(taskId, commentId, content)
+    if (result) {
+      toast.success('Comment updated')
+      await loadComments()
+    }
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    const ok = await deleteComment(taskId, commentId)
+    if (ok) {
+      toast.success('Comment deleted')
+      await loadComments()
+    }
+  }
+
   const chip = (text, color) => (
     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${color}1a`, color }}>{text}</span>
   )
@@ -137,14 +233,16 @@ function TaskDetail() {
             {/* main column */}
             <div style={{ flex: 2, minWidth: 320 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-                {chip(task.type, TYPE_COLOR[task.type] || '#64748b')}
-                {task.priority && chip(task.priority, PRIORITY_COLOR[task.priority] || '#64748b')}
+                {/* remember the keys: taskType / taskPriority (not type / priority) */}
+                {chip(task.taskType, TYPE_COLOR[task.taskType] || '#64748b')}
+                {task.taskPriority && chip(task.taskPriority, PRIORITY_COLOR[task.taskPriority] || '#64748b')}
                 {task.dueDate && <span className="muted" style={{ fontSize: 12 }}>Due {new Date(task.dueDate).toLocaleDateString()}</span>}
               </div>
 
               <h3 style={{ fontSize: '1.6rem', marginBottom: 6 }}>{task.title}</h3>
+              {/* TaskResponseDTO has no createdBy field, so we can only show the date */}
               <p className="muted" style={{ marginBottom: 20 }}>
-                Created by {view.creatorName || 'Unknown'}{task.createdAt ? ` on ${new Date(task.createdAt).toLocaleDateString()}` : ''}
+                {task.createdAt ? `Created on ${new Date(task.createdAt).toLocaleDateString()}` : ''}
               </p>
 
               <div className="card" style={{ padding: 20, marginBottom: 20 }}>
@@ -154,7 +252,16 @@ function TaskDetail() {
 
               <div className="card" style={{ padding: 20 }}>
                 <h6 style={{ fontSize: 16, marginBottom: 16 }}>Comments</h6>
-                <CommentList comments={view.comments} currentUserId={view.currentUserId} resolveUser={view.resolveUser} />
+                {/* CommentList just displays + fires callbacks; the page does the API work + refetch.
+                    resolveUser turns each comment's userId into a name (Auth first, mock fallback). */}
+                <CommentList
+                  comments={comments}
+                  currentUserId={CURRENT_USER_ID}
+                  resolveUser={resolveUser}
+                  onAdd={handleAddComment}
+                  onEdit={handleEditComment}
+                  onDelete={handleDeleteComment}
+                />
               </div>
             </div>
 
@@ -163,32 +270,36 @@ function TaskDetail() {
               <div className="card" style={{ padding: 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Status</div>
                 <DropDownListComponent
-                  dataSource={view.statuses}
+                  dataSource={statusOptions}
                   fields={{ text: 'text', value: 'value' }}
                   value={status}
-                  change={(e) => changeStatus(e.value)}
+                  change={(e) => handleStatusChange(e.value)}
                   width="100%"
                 />
 
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', margin: '18px 0 6px' }}>Assignees</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   {assignees.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No assignees</span>}
-                  {assignees.map((m) => (
-                    <span key={m.userId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f1f5f9', borderRadius: 999, padding: '3px 6px 3px 3px' }}>
-                      <span className="avatar" style={{ width: 22, height: 22, fontSize: 10, background: m.color }}>{m.initials}</span>
-                      <span style={{ fontSize: 12 }}>{m.name}</span>
-                      <ButtonComponent cssClass="e-flat" style={{ minWidth: 0, padding: '0 6px', lineHeight: 1 }} onClick={() => removeAssignee(m.userId)}>×</ButtonComponent>
-                    </span>
-                  ))}
+                  {assignees.map((a) => {
+                    // a = { userId, assignedAt } (id only) -> resolve to a name for display
+                    const m = resolveUser(a.userId)
+                    return (
+                      <span key={a.userId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f1f5f9', borderRadius: 999, padding: '3px 6px 3px 3px' }}>
+                        <span className="avatar" style={{ width: 22, height: 22, fontSize: 10, background: m.color }}>{m.initials}</span>
+                        <span style={{ fontSize: 12 }}>{m.name}</span>
+                        <ButtonComponent cssClass="e-flat" style={{ minWidth: 0, padding: '0 6px', lineHeight: 1 }} onClick={() => handleRemoveAssignee(a.userId)}>×</ButtonComponent>
+                      </span>
+                    )
+                  })}
                 </div>
-                {remaining.length > 0 && (
+                {candidates.length > 0 && (
                   <div style={{ marginTop: 10 }}>
                     <DropDownListComponent
-                      dataSource={remaining}
+                      dataSource={candidates}
                       fields={{ text: 'text', value: 'value' }}
                       placeholder="+ Add assignee"
                       value={null}
-                      change={(e) => addAssignee(e.value)}
+                      change={(e) => handleAddAssignee(e.value)}
                       width="100%"
                     />
                   </div>
@@ -197,14 +308,16 @@ function TaskDetail() {
 
               <div className="card" style={{ padding: 20 }}>
                 <h6 style={{ fontSize: 16, marginBottom: 12 }}>Activity</h6>
-                <ActivityLog items={view.activity} resolveActor={view.resolveActor} />
+                {/* No GET /task/{id}/activity endpoint on the backend yet -> nothing to wire, show empty. */}
+                <ActivityLog items={[]} resolveActor={() => ({})} />
               </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* Edit-task dialog (Edit Task button). WIRE: onSaveEdit -> updateTask */}
+      {/* Edit dialog. sprintId/featureId aren't in TaskUpdateDTO yet, so the form collects them
+          but updateTask() drops them until the backend adds those fields. */}
       <TaskForm
         open={editOpen}
         onClose={() => setEditOpen(false)}
@@ -212,11 +325,11 @@ function TaskDetail() {
         task={{
           title: task.title,
           description: task.description,
-          taskPriority: task.taskPriority || task.priority,
-          taskType: task.taskType || task.type,
+          taskPriority: task.taskPriority,
+          taskType: task.taskType,
           dueDate: task.dueDate,
           sprintId: task.sprintId ?? null,
-          featureId: task.featureId ?? null,
+          featureId: null,
         }}
         sprints={SPRINTS}
         features={FEATURES}

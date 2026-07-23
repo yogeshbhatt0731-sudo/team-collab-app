@@ -28,5 +28,13 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
 			"from Task t where t.myProject.id=:id ")
 	public List<TaskResponseDTO> findTasksByProject(@Param("id") Long id);
 
+	// "My Board": every task where the given user is an assignee, across ALL projects.
+	// Join TaskAssignee -> Task on the task id, and LEFT JOIN the sprint so BACKLOG tasks
+	// (no sprint) are still returned (s.id comes back null for them).
+	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt,s.id) " +
+			"from TaskAssignee ta join Task t on t.id=ta.taskUserId.taskId left join t.mySprint s " +
+			"where ta.taskUserId.userId=:uid")
+	public List<TaskResponseDTO> findTasksAssignedTo(@Param("uid") Long uid);
+
 
 }
