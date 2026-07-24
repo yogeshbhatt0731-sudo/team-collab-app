@@ -2,6 +2,7 @@ package com.teamcollab.workspaceservice.project.service;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.project.dtos.ProjectRequestDto;
+import com.teamcollab.workspaceservice.project.dtos.ProjectSummaryDto;
 import com.teamcollab.workspaceservice.project.entities.Project;
 
 import java.util.List;
@@ -11,6 +12,8 @@ public interface ProjectService {
     public ApiResponse addProject(Long userId, Long workspaceId, ProjectRequestDto projectRequestDto);
 
     public List<Project> getAllProjects(Long userId, Long workspaceId);
+
+    public List<ProjectSummaryDto> getMyProjects(Long userId);
 
     public Project getProject(Long userId, Long projectId);
 
