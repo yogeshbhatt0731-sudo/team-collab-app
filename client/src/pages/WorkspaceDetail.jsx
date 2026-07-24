@@ -1,287 +1,720 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
-import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
-import { DropDownButtonComponent } from '@syncfusion/ej2-react-splitbuttons'
-import { getWorkspaceById, getProjectsByWorkspace, getUserById, mockUsers } from '../data/mockData'
-import Header from '../components/Header'
-import Modal from '../components/Modal'
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { TextBoxComponent } from "@syncfusion/ej2-react-inputs";
+import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
+import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
+import Modal from "../components/Modal";
+import {
+    getProjectsByWorkspace,
+    getWorkspaceById,
+} from "../services/workspaceService";
+import {
+    createProject,
+    deleteProject,
+    updateProject,
+} from "../services/projectService";
 
-function WorkspaceDetail() {
-  const { workspaceId } = useParams()
-  const navigate = useNavigate()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [favorites, setFavorites] = useState(new Set())
-  const [selectedProject, setSelectedProject] = useState(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
-  const [projects, setProjects] = useState(() => getProjectsByWorkspace(workspaceId)) // WIRE: useProjects(workspaceId).data
-  const [projectFormOpen, setProjectFormOpen] = useState(false)
-  const [editingProject, setEditingProject] = useState(null) // null = create mode
-  const [projectName, setProjectName] = useState('')
-  const [projectError, setProjectError] = useState('')
+const accent = "#5b2ee8";
 
-  const workspace = getWorkspaceById(workspaceId)
-  const creator = workspace ? getUserById(workspace.createdBy) : null
-  const currentUser = mockUsers[0]
-  const isOwner = workspace?.role === 'OWNER'
-
-  if (!workspace) {
+function InfoCard({ label, value, detail, color }) {
     return (
-      <div style={{ padding: 32 }}>
-        <h4 style={{ fontSize: '1.75rem' }}>Workspace not found</h4>
-      </div>
-    )
-  }
-
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterStatus === 'all' || filterStatus === project.status
-    return matchesSearch && matchesFilter
-  })
-
-  const toggleFavorite = (event, projectId) => {
-    event.stopPropagation()
-    const next = new Set(favorites)
-    next.has(projectId) ? next.delete(projectId) : next.add(projectId)
-    setFavorites(next)
-  }
-
-  const projectMenuItems = () => [
-    { text: 'Open Project' },
-    { text: 'Edit Project' },
-    { text: 'Duplicate' },
-    { text: 'Members' },
-    { separator: true },
-    isOwner ? { text: 'Delete Project' } : { text: 'Leave Project' },
-  ]
-
-  const onProjectMenuSelect = (project, text) => {
-    setSelectedProject(project)
-    if (text === 'Open Project') navigate(`/workspace/${workspaceId}/project/${project.id}`)
-    else if (text === 'Edit Project') openEditProject(project)
-    else if (text === 'Members') navigate(`/workspace/${workspaceId}/members`)
-    else if (text === 'Delete Project') setDeleteDialogOpen(true)
-    else if (text === 'Leave Project') setLeaveDialogOpen(true)
-  }
-
-  const openCreateProject = () => { setEditingProject(null); setProjectName(''); setProjectError(''); setProjectFormOpen(true) }
-  const openEditProject = (project) => { setEditingProject(project); setProjectName(project.name); setProjectError(''); setProjectFormOpen(true) }
-
-  // Create or edit a project. Mock: mutate local state. WIRE: call the API then refetch.
-  const submitProject = () => {
-    if (!projectName.trim()) { setProjectError('Project name is required'); return }
-    const name = projectName.trim()
-    if (editingProject) {
-      setProjects((prev) => prev.map((p) => (p.id === editingProject.id ? { ...p, name } : p)))
-      // WIRE: await updateProject(editingProject.id, { name }); await loadProjects()
-    } else {
-      const newProject = { id: `proj_${Date.now()}`, name, createdBy: currentUser?.id, createdAt: new Date().toISOString(), workspaceId }
-      setProjects((prev) => [...prev, newProject])
-      // WIRE: await createProject({ name }, workspaceId); await loadProjects()
-    }
-    setProjectFormOpen(false)
-    setEditingProject(null)
-    setProjectName('')
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--app-bg)' }}>
-      <Header userName={currentUser?.name || 'User'} />
-
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: 32 }}>
-        {/* workspace header */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
+        <div
+            style={{
+                background: "#fff",
+                border: "1px solid #eaecf0",
                 borderRadius: 12,
-                background: workspace.accent || 'var(--blue)',
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fff',
-                fontSize: 32,
-                fontWeight: 700,
-              }}
+                padding: 18,
+                display: "flex",
+                gap: 14,
+                alignItems: "center",
+                boxShadow: "0 2px 7px rgba(16,24,40,0.025)",
+            }}
+        >
+            <div
+                style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 11,
+                    background: `${color}16`,
+                    color,
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 20,
+                    fontWeight: 800,
+                }}
             >
-              {workspace.name.charAt(0)}
+                ◈
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ fontSize: '1.75rem', marginBottom: 4 }}>{workspace.name}</h4>
-              <p className="muted" style={{ fontSize: '0.95rem' }}>
-                Created by {creator?.name} • {workspace.members} members • {workspace.projects} projects
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ display: 'flex' }} title={`${workspace.members} members in this workspace`}>
-              {mockUsers.slice(0, Math.min(workspace.members, 4)).map((user, i) => (
-                <span
-                  key={user.id}
-                  className="avatar"
-                  style={{ width: 32, height: 32, fontSize: '0.75rem', border: '2px solid var(--surface)', marginLeft: i === 0 ? 0 : -8 }}
-                >
-                  {user.name.split(' ').map((n) => n.charAt(0)).join('')}
-                </span>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-              <ButtonComponent cssClass="e-outline" onClick={openCreateProject}>+ New Project</ButtonComponent>
-              <ButtonComponent cssClass="e-outline" onClick={() => navigate(`/workspace/${workspaceId}/members`)}>Invite</ButtonComponent>
-              <ButtonComponent cssClass="e-outline" onClick={() => navigate(`/workspace/${workspaceId}/members`)}>Members</ButtonComponent>
-            </div>
-          </div>
-        </div>
-
-        {/* search + filter */}
-        <div style={{ marginBottom: 32, display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <div style={{ maxWidth: 300, width: '100%' }} className="tc-full">
-            <TextBoxComponent placeholder="Search projects..." value={searchTerm} input={(e) => setSearchTerm(e.value)} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <ButtonComponent cssClass={filterStatus === 'all' ? 'e-primary' : 'e-outline'} onClick={() => setFilterStatus('all')}>
-              Filter
-            </ButtonComponent>
-            <span className="chip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}>
-              Active ({filteredProjects.length})
-            </span>
-          </div>
-        </div>
-
-        {/* projects */}
-        <div style={{ marginBottom: 24 }}>
-          <h6 style={{ fontSize: 18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            Projects <span className="chip">{filteredProjects.length}</span>
-          </h6>
-
-          {filteredProjects.length === 0 ? (
-            <div style={{ padding: 48, textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 12, background: 'var(--surface)' }}>
-              <h6 style={{ fontSize: 18, marginBottom: 8 }}>No projects found</h6>
-              <p className="muted" style={{ marginBottom: 16 }}>
-                {searchTerm ? 'Try adjusting your search term' : 'Create a new project to get started'}
-              </p>
-              <ButtonComponent cssClass="e-primary" onClick={openCreateProject}>+ Create Project</ButtonComponent>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-              {filteredProjects.map((project) => (
+            <div>
+                <div style={{ color: "#667085", fontSize: 13 }}>{label}</div>
                 <div
-                  key={project.id}
-                  className="card"
-                  style={{ position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer', overflow: 'hidden' }}
-                  onClick={() => navigate(`/workspace/${workspaceId}/project/${project.id}`)}
+                    style={{
+                        fontWeight: 800,
+                        fontSize: 25,
+                        color: "#101828",
+                        marginTop: 2,
+                    }}
                 >
-                  <div style={{ height: 4, background: workspace.accent || 'var(--blue)' }} />
-
-                  <div style={{ flex: 1, padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {project.name}
-                      </div>
-                      <ButtonComponent
-                        cssClass="e-flat"
-                        onClick={(e) => toggleFavorite(e, project.id)}
-                        style={{ color: favorites.has(project.id) ? 'var(--warning)' : 'var(--muted)', minWidth: 0 }}
-                      >
-                        {favorites.has(project.id) ? '★' : '☆'}
-                      </ButtonComponent>
-                    </div>
-
-                    <p className="muted" style={{ marginBottom: 16, fontSize: '0.875rem' }}>
-                      Created on {new Date(project.createdAt).toLocaleDateString()}
-                    </p>
-
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                      <span className="chip" style={{ background: 'transparent', border: '1px solid var(--blue)', color: 'var(--blue)' }}>In Progress</span>
-                      <span className="chip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}>5 Tasks</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'var(--app-bg)', borderRadius: 8, fontSize: '0.85rem' }}>
-                      <span className="avatar" style={{ width: 24, height: 24, fontSize: '0.7rem' }}>
-                        {getUserById(project.createdBy)?.name.charAt(0)}
-                      </span>
-                      <span>Created by {getUserById(project.createdBy)?.name}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '8px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <ButtonComponent cssClass="e-primary" onClick={(e) => { e.stopPropagation(); navigate(`/workspace/${workspaceId}/project/${project.id}/board`) }}>Open Board</ButtonComponent>
-                    <span onClick={(e) => e.stopPropagation()}>
-                      <DropDownButtonComponent
-                        cssClass="tc-kebab"
-                        items={projectMenuItems()}
-                        select={(args) => onProjectMenuSelect(project, args.item.text)}
-                      >
-                        ⋮
-                      </DropDownButtonComponent>
-                    </span>
-                  </div>
+                    {value}
                 </div>
-              ))}
+                {detail && (
+                    <div
+                        style={{ color: "#667085", fontSize: 12, marginTop: 2 }}
+                    >
+                        {detail}
+                    </div>
+                )}
             </div>
-          )}
         </div>
-      </div>
-
-      <Modal
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        title="Delete Project?"
-        width={440}
-        footer={
-          <>
-            <ButtonComponent cssClass="e-flat" onClick={() => setDeleteDialogOpen(false)}>Cancel</ButtonComponent>
-            <ButtonComponent cssClass="e-danger" onClick={() => { setDeleteDialogOpen(false); setSelectedProject(null) }}>Delete</ButtonComponent>
-          </>
-        }
-      >
-        <p>Are you sure you want to delete <strong>{selectedProject?.name}</strong>? This action cannot be undone.</p>
-      </Modal>
-
-      <Modal
-        open={leaveDialogOpen}
-        onClose={() => setLeaveDialogOpen(false)}
-        title="Leave Project?"
-        width={440}
-        footer={
-          <>
-            <ButtonComponent cssClass="e-flat" onClick={() => setLeaveDialogOpen(false)}>Cancel</ButtonComponent>
-            <ButtonComponent cssClass="e-warning" onClick={() => { setLeaveDialogOpen(false); setSelectedProject(null) }}>Leave</ButtonComponent>
-          </>
-        }
-      >
-        <p>Are you sure you want to leave <strong>{selectedProject?.name}</strong>? You can rejoin if you are invited again.</p>
-      </Modal>
-
-      <Modal
-        open={projectFormOpen}
-        onClose={() => setProjectFormOpen(false)}
-        title={editingProject ? 'Edit Project' : 'Create Project'}
-        width={480}
-        footer={
-          <>
-            <ButtonComponent cssClass="e-flat" onClick={() => setProjectFormOpen(false)}>Cancel</ButtonComponent>
-            <ButtonComponent cssClass="e-primary" onClick={submitProject}>{editingProject ? 'Save Changes' : 'Create Project'}</ButtonComponent>
-          </>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {projectError && (
-            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: 'var(--danger)', fontWeight: 600 }}>{projectError}</div>
-          )}
-          <label>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Project Name</span>
-            <TextBoxComponent placeholder="e.g., Auth System" value={projectName} input={(e) => setProjectName(e.value)} />
-          </label>
-        </div>
-      </Modal>
-    </div>
-  )
+    );
 }
 
-export default WorkspaceDetail
+function WorkspaceDetail() {
+    const { workspaceId } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const userId = location.state?.userId || 1;
+    const role = location.state?.role || "MEMBER";
+    const [workspace, setWorkspace] = useState(null);
+    const [projects, setProjects] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [projectName, setProjectName] = useState("");
+    const [projectError, setProjectError] = useState("");
+    const [currentUser] = useState(() => {
+        const storedUser = localStorage.getItem("current_user");
+        return storedUser ? JSON.parse(storedUser) : { name: "User" };
+    });
+
+    const refreshProjects = async () => {
+        setProjects(await getProjectsByWorkspace(workspaceId, userId));
+    };
+
+    useEffect(() => {
+        async function loadWorkspace() {
+            try {
+                const [workspaceData, projectData] = await Promise.all([
+                    getWorkspaceById(workspaceId, userId),
+                    getProjectsByWorkspace(workspaceId, userId),
+                ]);
+                setWorkspace(workspaceData);
+                setProjects(projectData);
+            } catch (requestError) {
+                setError(
+                    requestError.response?.data?.message ||
+                        "Could not load this workspace.",
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadWorkspace();
+    }, [workspaceId, userId]);
+
+    const visibleProjects = projects.filter((project) =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+    const canManageProject = (project) => project.createdBy === userId;
+
+    const openCreateDialog = () => {
+        setSelectedProject(null);
+        setProjectName("");
+        setProjectError("");
+        setIsProjectDialogOpen(true);
+    };
+
+    const openEditDialog = (project) => {
+        setSelectedProject(project);
+        setProjectName(project.name);
+        setProjectError("");
+        setIsProjectDialogOpen(true);
+    };
+
+    const saveProject = async () => {
+        const name = projectName.trim();
+        if (!name) {
+            setProjectError("Project name is required.");
+            return;
+        }
+        try {
+            if (selectedProject)
+                await updateProject(selectedProject.id, name, userId);
+            else await createProject(workspaceId, name, userId);
+            await refreshProjects();
+            setIsProjectDialogOpen(false);
+        } catch (requestError) {
+            setProjectError(
+                requestError.response?.data?.message ||
+                    "Could not save project.",
+            );
+        }
+    };
+
+    const removeProject = async () => {
+        if (!selectedProject) return;
+        try {
+            await deleteProject(selectedProject.id, userId);
+            await refreshProjects();
+            setIsDeleteDialogOpen(false);
+            setSelectedProject(null);
+        } catch (requestError) {
+            setError(
+                requestError.response?.data?.message ||
+                    "Could not delete project.",
+            );
+            setIsDeleteDialogOpen(false);
+        }
+    };
+
+    return (
+        <div
+            style={{
+                minHeight: "100vh",
+                display: "flex",
+                background: "#f8f9fd",
+                color: "#101828",
+            }}
+        >
+            <Sidebar />
+            <div
+                style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                }}
+            >
+                <Header userName={currentUser.name} />
+                <main
+                    style={{ flex: 1, padding: "30px clamp(24px, 4vw, 52px)" }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => navigate("/workspaces")}
+                        style={{
+                            border: 0,
+                            background: "transparent",
+                            padding: 0,
+                            color: "#667085",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            marginBottom: 24,
+                        }}
+                    >
+                        ← Workspaces
+                    </button>
+
+                    {isLoading ? (
+                        <div
+                            style={{
+                                display: "grid",
+                                placeItems: "center",
+                                minHeight: 360,
+                            }}
+                        >
+                            <p style={{ color: "#667085" }}>
+                                Loading workspace...
+                            </p>
+                        </div>
+                    ) : error ? (
+                        <div
+                            style={{
+                                padding: 16,
+                                borderRadius: 9,
+                                background: "#fee4e2",
+                                color: "#b42318",
+                            }}
+                        >
+                            {error}
+                        </div>
+                    ) : (
+                        <>
+                            <section
+                                style={{
+                                    background: "#fff",
+                                    border: "1px solid #eaecf0",
+                                    borderRadius: 15,
+                                    padding: "24px clamp(20px, 3vw, 32px)",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    gap: 28,
+                                    alignItems: "center",
+                                    flexWrap: "wrap",
+                                    boxShadow:
+                                        "0 3px 12px rgba(16,24,40,0.025)",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: 18,
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            width: 76,
+                                            height: 76,
+                                            borderRadius: 18,
+                                            display: "grid",
+                                            placeItems: "center",
+                                            background:
+                                                "linear-gradient(135deg, #8b5cf6, #5b2ee8)",
+                                            color: "#fff",
+                                            fontWeight: 800,
+                                            fontSize: 27,
+                                            boxShadow:
+                                                "0 10px 20px rgba(91,46,232,.18)",
+                                        }}
+                                    >
+                                        {workspace.name
+                                            .slice(0, 2)
+                                            .toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <span
+                                            style={{
+                                                display: "inline-block",
+                                                padding: "4px 9px",
+                                                borderRadius: 999,
+                                                background:
+                                                    role === "OWNER"
+                                                        ? "#ede9fe"
+                                                        : "#f2f4f7",
+                                                color:
+                                                    role === "OWNER"
+                                                        ? accent
+                                                        : "#475467",
+                                                fontWeight: 750,
+                                                fontSize: 11,
+                                                letterSpacing: ".25px",
+                                            }}
+                                        >
+                                            {role}
+                                        </span>
+                                        <h1
+                                            style={{
+                                                margin: "8px 0 5px",
+                                                fontSize: 28,
+                                                letterSpacing: "-.5px",
+                                            }}
+                                        >
+                                            {workspace.name}
+                                        </h1>
+                                        <p
+                                            style={{
+                                                margin: 0,
+                                                color: "#667085",
+                                                fontSize: 14,
+                                            }}
+                                        >
+                                            A dedicated space for your
+                                            team&apos;s projects and
+                                            collaboration.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: 10,
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    {role === "OWNER" && (
+                                        <ButtonComponent
+                                            cssClass="e-primary"
+                                            onClick={openCreateDialog}
+                                            style={{
+                                                height: 42,
+                                                background: accent,
+                                                borderColor: accent,
+                                                borderRadius: 9,
+                                            }}
+                                        >
+                                            + New Project
+                                        </ButtonComponent>
+                                    )}
+                                </div>
+                            </section>
+
+                            <nav
+                                style={{
+                                    display: "flex",
+                                    gap: 28,
+                                    borderBottom: "1px solid #eaecf0",
+                                    marginTop: 26,
+                                    overflowX: "auto",
+                                }}
+                            >
+                                {[
+                                    "Overview",
+                                    "Projects",
+                                    "Members",
+                                    "Activity",
+                                ].map((item, index) => (
+                                    <span
+                                        key={item}
+                                        style={{
+                                            padding: "0 0 13px",
+                                            borderBottom:
+                                                index === 0
+                                                    ? `2px solid ${accent}`
+                                                    : "2px solid transparent",
+                                            color:
+                                                index === 0
+                                                    ? accent
+                                                    : "#667085",
+                                            fontWeight: index === 0 ? 750 : 550,
+                                            whiteSpace: "nowrap",
+                                            fontSize: 14,
+                                        }}
+                                    >
+                                        {item}
+                                    </span>
+                                ))}
+                            </nav>
+
+                            <section
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(auto-fit, minmax(200px, 1fr))",
+                                    gap: 16,
+                                    margin: "24px 0",
+                                }}
+                            >
+                                <InfoCard
+                                    label="Projects"
+                                    value={projects.length}
+                                    detail="Available in this workspace"
+                                    color={accent}
+                                />
+                                <InfoCard
+                                    label="Your Role"
+                                    value={
+                                        role === "OWNER" ? "Owner" : "Member"
+                                    }
+                                    detail={
+                                        role === "OWNER"
+                                            ? "You can create projects"
+                                            : "Project access is view-only"
+                                    }
+                                    color={
+                                        role === "OWNER" ? "#16a34a" : "#2563eb"
+                                    }
+                                />
+                                <InfoCard
+                                    label="Workspace ID"
+                                    value={`#${workspace.id || workspaceId}`}
+                                    detail="Use this to identify the workspace"
+                                    color="#f59e0b"
+                                />
+                            </section>
+
+                            <section
+                                style={{
+                                    background: "#fff",
+                                    border: "1px solid #eaecf0",
+                                    borderRadius: 14,
+                                    overflow: "hidden",
+                                    boxShadow:
+                                        "0 3px 10px rgba(16,24,40,0.025)",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        padding: "20px 22px",
+                                        borderBottom: "1px solid #eaecf0",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        gap: 16,
+                                        alignItems: "center",
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    <div>
+                                        <h2 style={{ fontSize: 19, margin: 0 }}>
+                                            Projects
+                                        </h2>
+                                        <p
+                                            style={{
+                                                margin: "4px 0 0",
+                                                color: "#667085",
+                                                fontSize: 13,
+                                            }}
+                                        >
+                                            Projects currently associated with
+                                            this workspace.
+                                        </p>
+                                    </div>
+                                    <div style={{ width: 245 }}>
+                                        <TextBoxComponent
+                                            placeholder="Search projects..."
+                                            value={searchTerm}
+                                            input={(event) =>
+                                                setSearchTerm(event.value)
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                {visibleProjects.length === 0 ? (
+                                    <div
+                                        style={{
+                                            padding: 42,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        <h3
+                                            style={{
+                                                margin: "0 0 7px",
+                                                fontSize: 17,
+                                            }}
+                                        >
+                                            No projects found
+                                        </h3>
+                                        <p
+                                            style={{
+                                                margin: 0,
+                                                color: "#667085",
+                                            }}
+                                        >
+                                            {searchTerm
+                                                ? "Try another search phrase."
+                                                : "Create a project to start organizing work."}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns:
+                                                "repeat(auto-fill, minmax(250px, 1fr))",
+                                            gap: 16,
+                                            padding: 20,
+                                        }}
+                                    >
+                                        {visibleProjects.map(
+                                            (project, index) => (
+                                                <article
+                                                    key={project.id}
+                                                    onClick={() =>
+                                                        navigate(
+                                                            `/workspace/${workspaceId}/project/${project.id}`,
+                                                            {
+                                                                state: {
+                                                                    userId,
+                                                                    role,
+                                                                    project,
+                                                                },
+                                                            },
+                                                        )
+                                                    }
+                                                    style={{
+                                                        border: "1px solid #e4e7ec",
+                                                        borderRadius: 11,
+                                                        padding: 17,
+                                                        cursor: "pointer",
+                                                        transition:
+                                                            "transform .15s ease, box-shadow .15s ease",
+                                                        background: "#fff",
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            justifyContent:
+                                                                "space-between",
+                                                            alignItems:
+                                                                "flex-start",
+                                                            gap: 10,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                width: 34,
+                                                                height: 34,
+                                                                borderRadius: 9,
+                                                                background: [
+                                                                    "#ede9fe",
+                                                                    "#e0f2fe",
+                                                                    "#dcfce7",
+                                                                    "#fff7ed",
+                                                                ][index % 4],
+                                                                color: [
+                                                                    accent,
+                                                                    "#0369a1",
+                                                                    "#15803d",
+                                                                    "#c2410c",
+                                                                ][index % 4],
+                                                                display: "grid",
+                                                                placeItems:
+                                                                    "center",
+                                                                fontWeight: 800,
+                                                            }}
+                                                        >
+                                                            P
+                                                        </span>
+                                                        {canManageProject(
+                                                            project,
+                                                        ) && (
+                                                            <div
+                                                                onClick={(
+                                                                    event,
+                                                                ) =>
+                                                                    event.stopPropagation()
+                                                                }
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    gap: 5,
+                                                                }}
+                                                            >
+                                                                <ButtonComponent
+                                                                    cssClass="e-flat"
+                                                                    onClick={() =>
+                                                                        openEditDialog(
+                                                                            project,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Edit
+                                                                </ButtonComponent>
+                                                                <ButtonComponent
+                                                                    cssClass="e-flat"
+                                                                    onClick={() => {
+                                                                        setSelectedProject(
+                                                                            project,
+                                                                        );
+                                                                        setIsDeleteDialogOpen(
+                                                                            true,
+                                                                        );
+                                                                    }}
+                                                                    style={{
+                                                                        color: "#d92d20",
+                                                                    }}
+                                                                >
+                                                                    Delete
+                                                                </ButtonComponent>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <h3
+                                                        style={{
+                                                            fontSize: 16,
+                                                            margin: "15px 0 6px",
+                                                        }}
+                                                    >
+                                                        {project.name}
+                                                    </h3>
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            color: "#667085",
+                                                            fontSize: 13,
+                                                        }}
+                                                    >
+                                                        Created{" "}
+                                                        {new Date(
+                                                            project.createdAt,
+                                                        ).toLocaleDateString()}
+                                                    </p>
+                                                </article>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+                        </>
+                    )}
+                </main>
+            </div>
+
+            <Modal
+                open={isProjectDialogOpen}
+                onClose={() => setIsProjectDialogOpen(false)}
+                title={selectedProject ? "Edit Project" : "Create Project"}
+                footer={
+                    <>
+                        <ButtonComponent
+                            cssClass="e-flat"
+                            onClick={() => setIsProjectDialogOpen(false)}
+                        >
+                            Cancel
+                        </ButtonComponent>
+                        <ButtonComponent
+                            cssClass="e-primary"
+                            onClick={saveProject}
+                        >
+                            {selectedProject
+                                ? "Save Changes"
+                                : "Create Project"}
+                        </ButtonComponent>
+                    </>
+                }
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                    }}
+                >
+                    {projectError && (
+                        <div style={{ color: "#d92d20" }}>{projectError}</div>
+                    )}
+                    <label>
+                        <span
+                            style={{
+                                display: "block",
+                                fontSize: 13,
+                                fontWeight: 650,
+                                marginBottom: 6,
+                            }}
+                        >
+                            Project Name
+                        </span>
+                        <TextBoxComponent
+                            value={projectName}
+                            input={(event) => setProjectName(event.value)}
+                        />
+                    </label>
+                </div>
+            </Modal>
+            <Modal
+                open={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                title="Delete Project?"
+                footer={
+                    <>
+                        <ButtonComponent
+                            cssClass="e-flat"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                        >
+                            Cancel
+                        </ButtonComponent>
+                        <ButtonComponent
+                            cssClass="e-danger"
+                            onClick={removeProject}
+                        >
+                            Delete Project
+                        </ButtonComponent>
+                    </>
+                }
+            >
+                <p>
+                    Delete <strong>{selectedProject?.name}</strong>? This cannot
+                    be undone.
+                </p>
+            </Modal>
+        </div>
+    );
+}
+
+export default WorkspaceDetail;
