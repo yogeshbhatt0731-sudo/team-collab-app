@@ -3,6 +3,7 @@ package com.teamcollab.workspaceservice.project.service;
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.common.exception.UnauthorizedException;
 import com.teamcollab.workspaceservice.project.dtos.ProjectRequestDto;
+import com.teamcollab.workspaceservice.project.dtos.ProjectSummaryDto;
 import com.teamcollab.workspaceservice.project.entities.Project;
 import com.teamcollab.workspaceservice.project.entities.ProjectAccess;
 import com.teamcollab.workspaceservice.project.entities.WorkSpaceProjectUserId;
@@ -97,6 +98,11 @@ public class ProjectServiceImpl implements ProjectService {
 		return list;
 	}
 
+	@Override
+	public List<ProjectSummaryDto> getMyProjects(Long userId) {
+		return projectRepository.findAllByUserId(userId);
+	}
+
 	public Project getProject(Long userId, Long projectId){
 
 		Project project =
@@ -152,6 +158,5 @@ public class ProjectServiceImpl implements ProjectService {
 		return new ApiResponse("success", "Project Deleted");
 
 	}
-
 
 }

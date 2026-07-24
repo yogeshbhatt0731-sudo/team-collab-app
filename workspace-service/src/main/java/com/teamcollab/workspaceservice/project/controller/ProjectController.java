@@ -18,6 +18,11 @@ public class ProjectController {
     private final ProjectService projectService;
     private final UserContext userContext;
 
+    @GetMapping
+    public ResponseEntity<?> getMyProjects() {
+        return ResponseEntity.ok(projectService.getMyProjects(userContext.getUserId()));
+    }
+
     @GetMapping("/{projectId}")
     public ResponseEntity<?> getProject(@PathVariable Long projectId){
         return ResponseEntity.status(HttpStatus.OK)
