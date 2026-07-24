@@ -9,6 +9,7 @@ import Settings from './pages/Settings'
 import Board from './pages/Board'
 import Members from './pages/Members'
 import TaskDetail from './pages/TaskDetail'
+import MyProjects from './pages/MyProjects'
 import 'react-toastify/dist/ReactToastify.css'
 import {ToastContainer} from "react-toastify";
 
@@ -26,6 +27,7 @@ function App({ themeMode, onThemeModeChange }) {
         <Route path="/workspace/:workspaceId/project/:projectId" element={<ProjectDetail />} />
         <Route path="/board" element={<Board />} />
         <Route path="/workspace/:workspaceId/project/:projectId/board" element={<Board />} />
+        <Route path="/projects" element={<MyProjects />} />
         <Route path="/task/:taskId" element={<TaskDetail />} />
         <Route path="/members" element={<Members />} />
         <Route path="/workspace/:workspaceId/members" element={<Members />} />

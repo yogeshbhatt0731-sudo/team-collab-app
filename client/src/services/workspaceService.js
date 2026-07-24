@@ -1,59 +1,62 @@
 import axios from 'axios'
 import { API_BASE_URL } from './config'
 
-export async function getWorkspaces(token) {
-  const url = API_BASE_URL + '/workspaces'
-  const headers = { authorization: 'Bearer ' + token }
-  try {
-    const response = await axios.get(url, { headers })
-    return response.data
-  } catch (error) {
-    window.alert(error)
-  }
+// ===== Workspace endpoints =====
+
+//Get Headers for userId
+function userHeaders(userId) {
+  return { 'X-User-Id': userId }
 }
 
-export async function getWorkspaceById(workspaceId, token) {
-  const url = API_BASE_URL + '/workspaces/' + workspaceId
-  const headers = { authorization: 'Bearer ' + token }
-  try {
-    const response = await axios.get(url, { headers })
-    return response.data
-  } catch (error) {
-    window.alert(error)
-  }
+//GET /workspaces -> List<WorkspaceResponseDTO>
+export async function getWorkspaces(userId) {
+  const response = await axios.get(`${API_BASE_URL}/workspaces`, {
+    headers: userHeaders(userId),
+  })
+  return response.data
 }
 
-export async function createWorkspace(name, token) {
-  const url = API_BASE_URL + '/workspaces'
-  const headers = { authorization: 'Bearer ' + token }
-  const body = { name }
-  try {
-    const response = await axios.post(url, body, { headers })
-    return response.data
-  } catch (error) {
-    window.alert(error)
-  }
+//GET /workspaces/{workspace_id} -> WorkspaceResponseDTO
+export async function getWorkspaceById(workspaceId, userId) {
+  const response = await axios.get(`${API_BASE_URL}/workspaces/${workspaceId}`, {
+    headers: userHeaders(userId),
+  })
+  return response.data
 }
 
-export async function updateWorkspace(workspaceId, name, token) {
-  const url = API_BASE_URL + '/workspaces/' + workspaceId
-  const headers = { authorization: 'Bearer ' + token }
-  const body = { name }
-  try {
-    const response = await axios.put(url, body, { headers })
-    return response.data
-  } catch (error) {
-    window.alert(error)
-  }
+//GET /workspaces/{workspace_id}/projects -> List<ProjectResponseDTO>
+export async function getProjectsByWorkspace(workspaceId, userId) {
+  const response = await axios.get(`${API_BASE_URL}/workspaces/${workspaceId}/projects`, {
+    headers: userHeaders(userId),
+  })
+  return response.data
 }
 
-export async function deleteWorkspace(workspaceId, token) {
-  const url = API_BASE_URL + '/workspaces/' + workspaceId
-  const headers = { authorization: 'Bearer ' + token }
-  try {
-    const response = await axios.delete(url, { headers })
-    return response.data
-  } catch (error) {
-    window.alert(error)
-  }
+
+//POST /workspaces, payload: WorkspaceRequestDTO { name }
+export async function createWorkspace(name, userId) {
+  const response = await axios.post(
+    `${API_BASE_URL}/workspaces`,
+    { name },
+    { headers: userHeaders(userId) },
+  )
+  return response.data
+}
+
+//PUT /workspaces/{workspace_id}, payload: WorkspaceRequestDTO { name }
+export async function updateWorkspace(workspaceId, name, userId) {
+  const response = await axios.put(
+    `${API_BASE_URL}/workspaces/${workspaceId}`,
+    { name },
+    { headers: userHeaders(userId) },
+  )
+  return response.data
+}
+
+//DELETE /workspaces/{workspace_id}
+export async function deleteWorkspace(workspaceId, userId) {
+  const response = await axios.delete(`${API_BASE_URL}/workspaces/${workspaceId}`, {
+    headers: userHeaders(userId),
+  })
+  return response.data
 }

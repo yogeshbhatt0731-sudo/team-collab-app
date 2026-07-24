@@ -4,6 +4,7 @@ import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 const navItems = [
   { label: 'Home', path: '/home' },
   { label: 'Workspaces', path: '/workspaces' },
+  { label: 'My Projects', path: '/projects' },
   { label: 'My Board', path: '/board' },
   { label: 'Members', path: '/members' },
   { label: 'Settings', path: '/settings' },
