@@ -21,6 +21,11 @@ function Sidebar() {
     <aside
       style={{
         width: 244,
+        position: 'sticky',
+        top: 0,
+        alignSelf: 'flex-start',
+        height: '100vh',
+        flexShrink: 0,
         background: 'var(--navy)',
         color: '#cbd5e1',
         padding: '20px 16px',

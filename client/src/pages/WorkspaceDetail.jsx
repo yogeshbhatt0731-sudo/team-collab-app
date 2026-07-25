@@ -328,6 +328,20 @@ function WorkspaceDetail() {
                                 >
                                     {role === "OWNER" && (
                                         <ButtonComponent
+                                            cssClass="e-outline"
+                                            onClick={() => navigate(`/workspace/${workspaceId}/members`)}
+                                            style={{
+                                                height: 42,
+                                                borderRadius: 9,
+                                                borderColor: "#d9d6fe",
+                                                color: accent,
+                                            }}
+                                        >
+                                            Invite Members
+                                        </ButtonComponent>
+                                    )}
+                                    {role === "OWNER" && (
+                                        <ButtonComponent
                                             cssClass="e-primary"
                                             onClick={openCreateDialog}
                                             style={{

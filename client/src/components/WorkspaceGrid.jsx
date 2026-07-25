@@ -5,7 +5,7 @@ function WorkspaceGrid({ workspaces }) {
   const navigate = useNavigate()
   return (
     <div>
-      <h5 style={{ fontSize: 22, marginBottom: 18 }}>Workspaces</h5>
+      <h2 style={{ fontSize: 21, margin: '0 0 18px' }}>Your workspaces</h2>
 
       {workspaces.length === 0 ? (
         <div
@@ -29,54 +29,38 @@ function WorkspaceGrid({ workspaces }) {
               key={workspace.id}
               className="card"
               style={{
-                padding: 20,
+                padding: 22,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 18,
+                gap: 20,
+                minHeight: 196,
               }}
             >
-              <div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div
                   style={{
-                    width: 38,
-                    height: 5,
-                    borderRadius: 4,
-                    background: workspace.accent,
-                    marginBottom: 16,
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: '#f0edff',
+                    color: '#5b2ee8',
+                    fontWeight: 800,
+                    flexShrink: 0,
                   }}
-                />
-                <h6 style={{ fontSize: 18, lineHeight: 1.25 }}>
-                  {workspace.name} ({workspace.role})
-                </h6>
+                >
+                  {workspace.name?.slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h6 style={{ fontSize: 18, lineHeight: 1.25, margin: 0 }}>{workspace.name}</h6>
+                  <span className="muted" style={{ display: 'inline-block', marginTop: 6, fontSize: 13 }}>{workspace.role}</span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 6 }}>
-                {workspace.avatars.slice(0, 4).map((avatar) => (
-                  <span
-                    key={`${workspace.id}-${avatar}`}
-                    className="avatar"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      fontSize: 12,
-                      background: workspace.accent,
-                      border: '2px solid var(--surface)',
-                    }}
-                  >
-                    {avatar}
-                  </span>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div className="muted" style={{ fontSize: 13 }}>Projects</div>
-                  <div style={{ fontWeight: 800, fontSize: 22 }}>{workspace.projects}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div className="muted" style={{ fontSize: 13 }}>Members</div>
-                  <div style={{ fontWeight: 800, fontSize: 22 }}>{workspace.members}</div>
-                </div>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 15 }}>
+                <div className="muted" style={{ fontSize: 13 }}>Projects</div>
+                <div style={{ fontWeight: 800, fontSize: 23, marginTop: 3 }}>{workspace.projects}</div>
               </div>
 
               <div style={{ marginTop: 'auto' }}>

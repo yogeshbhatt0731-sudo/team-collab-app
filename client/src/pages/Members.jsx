@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
@@ -8,6 +8,7 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import Modal from '../components/Modal'
 import { MEMBERS } from '../data/taskMock'
+import { getWorkspaces } from '../services/workspaceService'
 
 const ROLE_STYLE = {
   OWNER: { bg: '#fef3c7', fg: '#92400e' },
@@ -30,13 +31,42 @@ function Members() {
   // bare /members sidebar link (workspaceId undefined -> mock/all).
   const { workspaceId } = useParams()
   const navigate = useNavigate()
-  const [members, setMembers] = useState(MEMBERS) // WIRE: useMembers(workspaceId).data -> GET workspace members
+  const memberStorageKey = `workspace-members-${workspaceId || 'all'}`
+  const [members, setMembers] = useState(() => {
+    const storedMembers = localStorage.getItem(memberStorageKey)
+    return storedMembers ? JSON.parse(storedMembers) : MEMBERS
+  })
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState('')
   const [roleOpen, setRoleOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
   const [newRole, setNewRole] = useState('')
+  const [workspaces, setWorkspaces] = useState([])
+  const [addToWorkspaceOpen, setAddToWorkspaceOpen] = useState(false)
+  const [memberToAdd, setMemberToAdd] = useState(null)
+  const [targetWorkspaceId, setTargetWorkspaceId] = useState('')
+
+  useEffect(() => {
+    if (workspaceId) return
+    async function loadWorkspaces() {
+      try {
+        setWorkspaces(await getWorkspaces(1))
+      } catch {
+        setWorkspaces([])
+      }
+    }
+    loadWorkspaces()
+  }, [workspaceId])
+
+  const updateMembers = (updater) => {
+    setMembers((currentMembers) => {
+      const nextMembers = typeof updater === 'function' ? updater(currentMembers) : updater
+      localStorage.setItem(memberStorageKey, JSON.stringify(nextMembers))
+      return nextMembers
+    })
+  }
 
   const onMemberMenu = (member, text) => {
     setSelectedMember(member)
@@ -44,16 +74,53 @@ function Members() {
     else if (text === 'Remove from Workspace') setRemoveOpen(true)
   }
 
+  const submitInvite = () => {
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email || !email.includes('@')) {
+      setInviteError('Enter a valid email address.')
+      return
+    }
+    if (members.some((member) => member.email.toLowerCase() === email)) {
+      setInviteError('This user is already a workspace member.')
+      return
+    }
+
+    const name = email.split('@')[0].split(/[._-]/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
+    updateMembers((currentMembers) => [...currentMembers, {
+      userId: `mock-${Date.now()}`,
+      name: name || 'New member',
+      initials: (name || 'NM').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
+      color: '#475467',
+      role: 'MEMBER',
+      email,
+    }])
+    setInviteEmail('')
+    setInviteError('')
+    setInviteOpen(false)
+  }
+
+  const addExistingMember = () => {
+    if (!memberToAdd || !targetWorkspaceId) return
+    const targetKey = `workspace-members-${targetWorkspaceId}`
+    const targetMembers = JSON.parse(localStorage.getItem(targetKey) || JSON.stringify(MEMBERS))
+    if (!targetMembers.some((member) => member.email === memberToAdd.email)) {
+      localStorage.setItem(targetKey, JSON.stringify([...targetMembers, { ...memberToAdd, role: 'MEMBER' }]))
+    }
+    setTargetWorkspaceId('')
+    setMemberToAdd(null)
+    setAddToWorkspaceOpen(false)
+  }
+
   // Mock: mutate local state. WIRE: call the API then refetch.
   const submitRole = () => {
-    setMembers((prev) => prev.map((m) => (m.userId === selectedMember.userId ? { ...m, role: newRole } : m)))
+    updateMembers((prev) => prev.map((m) => (m.userId === selectedMember.userId ? { ...m, role: newRole } : m)))
     // WIRE: await changeRole(selectedMember.userId, newRole); await loadMembers()
     setRoleOpen(false)
     setSelectedMember(null)
   }
 
   const confirmRemove = () => {
-    setMembers((prev) => prev.filter((m) => m.userId !== selectedMember.userId))
+    updateMembers((prev) => prev.filter((m) => m.userId !== selectedMember.userId))
     // WIRE: await removeMember(selectedMember.userId); await loadMembers()
     setRemoveOpen(false)
     setSelectedMember(null)
@@ -73,9 +140,12 @@ function Members() {
                 <ButtonComponent cssClass="e-flat" style={{ marginBottom: 8 }} onClick={() => navigate(`/workspace/${workspaceId}`)}>← Back to workspace</ButtonComponent>
               )}
               <h4 style={{ fontSize: '1.75rem', marginBottom: 8 }}>Members</h4>
-              <p className="muted" style={{ fontSize: 16 }}>People with access to this workspace</p>
+              <p className="muted" style={{ fontSize: 16 }}>People with access to this workspace{workspaceId ? ` (Workspace #${workspaceId})` : ''}</p>
             </div>
-            <ButtonComponent cssClass="e-primary" onClick={() => setInviteOpen(true)}>+ Invite Member</ButtonComponent>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {!workspaceId && <ButtonComponent cssClass="e-outline" onClick={() => setAddToWorkspaceOpen(true)}>Add to Workspace</ButtonComponent>}
+              <ButtonComponent cssClass="e-primary" onClick={() => setInviteOpen(true)}>+ Invite Member</ButtonComponent>
+            </div>
           </div>
 
           <div className="card" style={{ boxShadow: 'none', overflow: 'hidden' }}>
@@ -111,14 +181,24 @@ function Members() {
         footer={
           <>
             <ButtonComponent cssClass="e-flat" onClick={() => setInviteOpen(false)}>Cancel</ButtonComponent>
-            <ButtonComponent cssClass="e-primary" onClick={() => { /* WIRE: invite(workspaceId, inviteEmail) */ setInviteOpen(false); setInviteEmail('') }}>Send Invite</ButtonComponent>
+            <ButtonComponent cssClass="e-primary" onClick={submitInvite}>Add Member</ButtonComponent>
           </>
         }
       >
-        <label>
-          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email address</span>
-          <TextBoxComponent type="email" placeholder="teammate@example.com" value={inviteEmail} input={(e) => setInviteEmail(e.value)} />
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email address</span>
+            <TextBoxComponent type="email" placeholder="teammate@example.com" value={inviteEmail} input={(e) => { setInviteEmail(e.value); setInviteError('') }} />
+          </label>
+          {inviteError && <p style={{ margin: 0, color: 'var(--danger)', fontSize: 13 }}>{inviteError}</p>}
+        </div>
+      </Modal>
+
+      <Modal open={addToWorkspaceOpen} onClose={() => setAddToWorkspaceOpen(false)} title="Add Member to Workspace" footer={<><ButtonComponent cssClass="e-flat" onClick={() => setAddToWorkspaceOpen(false)}>Cancel</ButtonComponent><ButtonComponent cssClass="e-primary" disabled={!memberToAdd || !targetWorkspaceId} onClick={addExistingMember}>Add Member</ButtonComponent></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <label><span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Member</span><DropDownListComponent dataSource={members} fields={{ text: 'name', value: 'email' }} placeholder="Select member" change={(event) => setMemberToAdd(members.find((member) => member.email === event.value) || null)} /></label>
+          <label><span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Workspace</span><DropDownListComponent dataSource={workspaces} fields={{ text: 'name', value: 'workspace_id' }} placeholder="Select workspace" change={(event) => setTargetWorkspaceId(event.value)} /></label>
+        </div>
       </Modal>
 
       <Modal

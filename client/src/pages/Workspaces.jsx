@@ -48,7 +48,10 @@ function Workspaces() {
       navigate('/login')
       return
     }
-    loadWorkspaces()
+    async function initializeWorkspaces() {
+      await loadWorkspaces()
+    }
+    initializeWorkspaces()
   }, [token, navigate])
 
   const handleCreateWorkspace = async () => {
@@ -122,9 +125,12 @@ function Workspaces() {
               <h1 style={{ margin: 0, fontSize: 30, letterSpacing: '-0.6px', fontWeight: 800 }}>My Workspaces</h1>
               <p style={{ margin: '8px 0 0', color: '#667085', fontSize: 16 }}>All the workspaces you&apos;re a part of. Create or join a workspace to start collaborating.</p>
             </div>
-            <ButtonComponent cssClass="e-primary" onClick={() => setIsCreateDialogOpen(true)} style={{ borderRadius: 9, background: '#5b2ee8', borderColor: '#5b2ee8', padding: '0 18px', height: 44 }}>
-              +&nbsp; New Workspace
-            </ButtonComponent>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <ButtonComponent cssClass="e-outline" onClick={() => navigate('/members')} style={{ borderRadius: 9, height: 44, borderColor: '#d9d6fe', color: '#5b2ee8' }}>Invite Member</ButtonComponent>
+              <ButtonComponent cssClass="e-primary" onClick={() => setIsCreateDialogOpen(true)} style={{ borderRadius: 9, background: '#5b2ee8', borderColor: '#5b2ee8', padding: '0 18px', height: 44 }}>
+                +&nbsp; New Workspace
+              </ButtonComponent>
+            </div>
           </section>
 
           <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
@@ -205,6 +211,7 @@ function Workspaces() {
           <label><span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Workspace Name</span><TextBoxComponent value={editWorkspaceName} input={(event) => setEditWorkspaceName(event.value)} /></label>
         </div>
       </Modal>
+
     </div>
   )
 }
