@@ -1,5 +1,3 @@
-import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
-
 function WorkspaceDetailsPanel({ workspace, projects }) {
   if (!workspace) {
     return (
@@ -19,11 +17,9 @@ function WorkspaceDetailsPanel({ workspace, projects }) {
           <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>Active Workspace</div>
           <h5 style={{ fontSize: 22 }}>{workspace.name}</h5>
           <p className="muted" style={{ marginTop: 8, lineHeight: 1.6 }}>
-            Owner workspace with {workspace.members} members and {workspace.projects} active projects.
+            Your role is {workspace.role}. This workspace has {workspace.projects} project{workspace.projects === 1 ? '' : 's'}.
           </p>
         </div>
-
-        <ButtonComponent cssClass="e-primary tc-block">+ Create Project</ButtonComponent>
 
         <div>
           <h6 style={{ fontSize: 18, marginBottom: 12 }}>Current Projects</h6>
@@ -45,7 +41,7 @@ function WorkspaceDetailsPanel({ workspace, projects }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {projects.map((project) => (
                 <div
-                  key={project.name}
+                  key={project.id}
                   style={{
                     padding: 12,
                     border: '1px solid var(--border)',
@@ -56,12 +52,8 @@ function WorkspaceDetailsPanel({ workspace, projects }) {
                     gap: 10,
                   }}
                 >
-                  <span
-                    style={{ width: 9, height: 9, borderRadius: '50%', background: project.color }}
-                  />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{project.name}</div>
-                    <div className="muted" style={{ fontSize: 13 }}>{project.status}</div>
                   </div>
                 </div>
               ))}
