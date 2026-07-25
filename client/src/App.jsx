@@ -3,7 +3,6 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import WorkspaceDetail from './pages/WorkspaceDetail'
-import ProjectDetail from './pages/ProjectDetail'
 import Workspaces from './pages/Workspaces'
 import Settings from './pages/Settings'
 import Board from './pages/Board'
@@ -24,7 +23,7 @@ function App({ themeMode, onThemeModeChange }) {
         <Route path="/workspaces" element={<Workspaces themeMode={themeMode} onThemeModeChange={onThemeModeChange} />} />
         <Route path="/settings" element={<Settings themeMode={themeMode} onThemeModeChange={onThemeModeChange} />} />
         <Route path="/workspace/:workspaceId" element={<WorkspaceDetail />} />
-        <Route path="/workspace/:workspaceId/project/:projectId" element={<ProjectDetail />} />
+        <Route path="/workspace/:workspaceId/project/:projectId" element={<Board />} />
         <Route path="/board" element={<Board />} />
         <Route path="/workspace/:workspaceId/project/:projectId/board" element={<Board />} />
         <Route path="/projects" element={<MyProjects />} />
