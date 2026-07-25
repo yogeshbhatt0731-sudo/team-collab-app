@@ -74,6 +74,21 @@ p { margin: 0; }
 .btn-outline { border-color: var(--border); }
 .btn-danger { color: var(--danger); }
 
+/* Sprint/feature "Delete" buttons: white background + red text, in both enabled and
+   Syncfusion's disabled state (which otherwise paints its own grey background). */
+.tc-delete-btn,
+.tc-delete-btn:disabled,
+.tc-delete-btn.e-btn:disabled,
+.tc-delete-btn[disabled] {
+  background: var(--surface) !important;
+  color: var(--danger) !important;
+}
+.tc-delete-btn:disabled,
+.tc-delete-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
