@@ -7,13 +7,19 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import TaskForm from '../components/TaskForm'
 import SprintForm from '../components/SprintForm'
+import SprintDetailsModal from '../components/SprintDetailsModal'
 import FeatureForm from '../components/FeatureForm'
+import FeatureDetailsModal from '../components/FeatureDetailsModal'
 import { toast } from 'react-toastify'
-import { SPRINTS, FEATURES, featureById, memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
+import { memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
 import { listTasks, listAssignedTasks, createTask, changeStatus } from "../services/taskService.js";
+import { listSprints, createSprint, updateSprint, updateSprintStatus, deleteSprint, getSprintDetails } from "../services/sprintService.js";
+import { listFeatures, createFeature, updateFeatureStatus, deleteFeature, getFeatureDetails } from "../services/featureService.js";
 
 const SPRINT_STATUS_COLOR = { PLANNED: '#64748b', ACTIVE: '#16a34a', COMPLETED: '#4f46e5' }
+const SPRINT_STATUS_ORDER = ['ACTIVE', 'PLANNED', 'COMPLETED'] // display order for the grouped Sprints tab
 const FEATURE_STATUS_COLOR = { PLANNED: '#64748b', IN_PROGRESS: '#2563eb', DONE: '#16a34a' }
+const FEATURE_STATUS_ORDER = ['IN_PROGRESS', 'PLANNED', 'DONE'] // display order for the grouped Features tab
 const FEATURE_COLOR = '#7c3aed' // epic accent for feature badges
 
 function badge(text, color) {
@@ -25,33 +31,37 @@ function badge(text, color) {
 }
 
 // data-taskid lets the board catch a click via delegation (see handlers below).
-function cardTemplate(task) {
-  const assignees = (task.assignees || []).map(memberById).filter(Boolean)
-  const feature = task.featureId ? featureById(task.featureId) : null
-  return (
-    <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer' }}>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-        {badge(task.taskType, TYPE_COLOR[task.taskType] || '#64748b')}
-        {badge(task.taskPriority, PRIORITY_COLOR[task.taskPriority] || '#64748b')}
-        {feature && badge(feature.name, FEATURE_COLOR)}
-      </div>
-      <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.35, color: '#0f172a', marginBottom: 10 }}>
-        {task.title}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex' }}>
-          {assignees.slice(0, 3).map((m, i) => (
-            <span key={m.userId} className="avatar" style={{ width: 24, height: 24, fontSize: 10, background: m.color, border: '2px solid #fff', marginLeft: i === 0 ? 0 : -8 }}>
-              {m.initials}
-            </span>
-          ))}
+// Factory so the card can badge a task's feature from the CURRENT (API-backed) features list.
+function makeCardTemplate(features) {
+  const findFeature = (featureId) => features.find((f) => f.id === featureId)
+  return function cardTemplate(task) {
+    const assignees = (task.assignees || []).map(memberById).filter(Boolean)
+    const feature = task.featureId ? findFeature(task.featureId) : null
+    return (
+      <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          {badge(task.taskType, TYPE_COLOR[task.taskType] || '#64748b')}
+          {badge(task.taskPriority, PRIORITY_COLOR[task.taskPriority] || '#64748b')}
+          {feature && badge(feature.name, FEATURE_COLOR)}
         </div>
-        {/* commentCount + assignees aren't in the list DTO (TaskResponseDTO) — guard so cards don't show "undefined".
-            WIRE: add them to the list response, or fetch per-task, if you want avatars/counts on the board. */}
-        <span style={{ fontSize: 11, color: '#64748b' }}>{task.commentCount ?? 0} 💬</span>
+        <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.35, color: '#0f172a', marginBottom: 10 }}>
+          {task.title}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex' }}>
+            {assignees.slice(0, 3).map((m, i) => (
+              <span key={m.userId} className="avatar" style={{ width: 24, height: 24, fontSize: 10, background: m.color, border: '2px solid #fff', marginLeft: i === 0 ? 0 : -8 }}>
+                {m.initials}
+              </span>
+            ))}
+          </div>
+          {/* commentCount + assignees aren't in the list DTO (TaskResponseDTO) — guard so cards don't show "undefined".
+              WIRE: add them to the list response, or fetch per-task, if you want avatars/counts on the board. */}
+          <span style={{ fontSize: 11, color: '#64748b' }}>{task.commentCount ?? 0} 💬</span>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 }
 
 // A small status pill for a sprint.
@@ -74,26 +84,59 @@ function Board() {
 
   const [tasks, setTasks] = useState([])
 
-  const [sprints, setSprints] = useState(SPRINTS)
-  const [features, setFeatures] = useState(FEATURES)
+  const [sprints, setSprints] = useState([])
+  const [features, setFeatures] = useState([])
   const [role, setRole] = useState('OWNER') // DEMO toggle. WIRE: workspace_user.role for CURRENT_USER_ID
-  const [tab, setTab] = useState('sprint')  // 'sprint' | 'backlog'
+  const [tab, setTab] = useState('sprint')  // 'sprint' | 'backlog' | 'sprints' | 'features'
   const [formOpen, setFormOpen] = useState(false)
   const [sprintFormOpen, setSprintFormOpen] = useState(false)
+  const [editingSprint, setEditingSprint] = useState(null) // sprint being edited, or null when creating
   const [featureFormOpen, setFeatureFormOpen] = useState(false)
+  const [creatingSprint, setCreatingSprint] = useState(false)
+  const [creatingFeature, setCreatingFeature] = useState(false)
+  const [sprintActionId, setSprintActionId] = useState(null) // sprint id currently mid start/complete
+  const [featureActionId, setFeatureActionId] = useState(null) // feature id currently mid status change
+  // Sprints tab: sprints grouped by status into expandable sections. All collapsed by default.
+  const [openSprintGroups, setOpenSprintGroups] = useState({ ACTIVE: false, PLANNED: false, COMPLETED: false })
+  const toggleSprintGroup = (status) => setOpenSprintGroups((prev) => ({ ...prev, [status]: !prev[status] }))
+  const [sprintDetailsOpen, setSprintDetailsOpen] = useState(false)
+  const [sprintDetails, setSprintDetails] = useState(null)
+  const [viewingSprintId, setViewingSprintId] = useState(null) // sprint id currently being fetched for the Details modal
+  // Features tab: features grouped by status into expandable sections. All collapsed by default.
+  const [openFeatureGroups, setOpenFeatureGroups] = useState({ IN_PROGRESS: false, PLANNED: false, DONE: false })
+  const toggleFeatureGroup = (status) => setOpenFeatureGroups((prev) => ({ ...prev, [status]: !prev[status] }))
+  const [featureDetailsOpen, setFeatureDetailsOpen] = useState(false)
+  const [featureDetails, setFeatureDetails] = useState(null)
+  const [viewingFeatureId, setViewingFeatureId] = useState(null) // feature id currently being fetched for the Details modal
   const down = useRef({ x: 0, y: 0 })
 
- const loadTasks = async () => {
+  const loadTasks = async () => {
     // My Board (no project in the URL) -> tasks assigned to ME (GET /task/assigned).
     // Project Board -> that one project's tasks (GET /task?projectId=).
     // Note: we can't call listTasks(undefined) — the backend requires projectId and would 400.
     const data = projectId ? await listTasks(projectId) : await listAssignedTasks()
-    if(data) setTasks(data)
- }
+    if (data) setTasks(data)
+  }
 
-//Loading all tasks related to a particular project (reload if the project in the URL changes)
+  // Sprints/features are project-scoped lists straight from the API — no client-side
+  // projectId filtering needed (and the response DTOs don't even carry a projectId field).
+  const loadSprints = async () => {
+    const data = await listSprints(projectId)
+    setSprints(data || [])
+  }
+  const loadFeatures = async () => {
+    const data = await listFeatures(projectId)
+    setFeatures(data || [])
+  }
+
+  // Tasks always load (My Board vs Project Board is handled inside loadTasks itself);
+  // sprints/features only make sense once we're scoped to a project.
   useEffect(() => {
     loadTasks()
+    if (projectId) {
+      loadSprints()
+      loadFeatures()
+    }
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -102,15 +145,18 @@ function Board() {
   /* ---------- derived data ---------- */
   // listTasks(projectId) already returns only THIS project's tasks (server filters by ?projectId),
   // and TaskResponseDTO has no projectId field, so we use the list as-is (no client-side re-filter).
+  // Same reasoning for sprints/features: their response DTOs don't carry a projectId field either,
+  // and GET /projects/{projectId}/sprints|feature already scopes the list server-side.
   const projectTasks = tasks
-  const projectSprints = projectId ? sprints.filter((s) => s.projectId === projectId) : []
-  const projectFeatures = projectId ? features.filter((f) => f.projectId === projectId) : []
-  const activeSprint = projectSprints.find((s) => s.status === 'ACTIVE') || null
+  const projectSprints = sprints
+  const projectFeatures = features
+  const activeSprint = projectSprints.find((s) => s.sprintStatus === 'ACTIVE') || null
   const sprintTasks = activeSprint ? projectTasks.filter((t) => t.sprintId === activeSprint.id) : []
-  const backlogTasks = tasks.filter((t) => !t.sprintId) // sprint_id null = backlog
+  const backlogTasks = projectTasks.filter((t) => !t.sprintId) // sprint_id null = backlog
   // My Board (no project): the list is ALREADY only my tasks (GET /task/assigned filters by me),
   // so no client-side assignee filter is needed — just show what came back.
   const myTasks = tasks
+  const cardTemplate = makeCardTemplate(features)
 
   /* ---------- click vs drag on the Kanban ---------- */
   const onPointerDownCapture = (e) => { down.current = { x: e.clientX, y: e.clientY } }
@@ -150,42 +196,97 @@ function Board() {
     setFormOpen(false)
   }
 
-  const onCreateSprint = (values) => {
-    const newSprint = { id: Date.now(), projectId, status: 'PLANNED', ...values }
-    setSprints((prev) => [...prev, newSprint])
-    // WIRE: await createSprint({ ...values, projectId }); await loadSprints()
-    setSprintFormOpen(false)
+  const openNewSprintForm = () => { setEditingSprint(null); setSprintFormOpen(true) }
+  const openEditSprintForm = (sprint) => { setEditingSprint(sprint); setSprintFormOpen(true) }
+  const closeSprintForm = () => { setSprintFormOpen(false); setEditingSprint(null) }
+
+  // Same modal handles create + edit — dispatch based on whether we're editing.
+  // Backend only allows the edit while the sprint is PLANNED (InvalidSprintUpdationException otherwise).
+  const onSubmitSprintForm = async (values) => {
+    setCreatingSprint(true)
+    const ok = editingSprint
+      ? await updateSprint(editingSprint.id, values)
+      : await createSprint({ ...values, projectId: Number(projectId) })
+    setCreatingSprint(false)
+    if (ok) {
+      closeSprintForm()
+      await loadSprints()
+    }
   }
 
-  const startSprint = (sprintId) => {
-    // one ACTIVE sprint per project: starting this one completes any other active sprint here.
-    setSprints((prev) => prev.map((s) => {
-      if (s.id === sprintId) return { ...s, status: 'ACTIVE' }
-      if (s.projectId === projectId && s.status === 'ACTIVE') return { ...s, status: 'COMPLETED' }
-      return s
-    }))
-    // WIRE: PATCH sprint status PLANNED->ACTIVE (backend enforces one ACTIVE per project) -> refetch
+  const startSprint = async (sprintId) => {
+    setSprintActionId(sprintId)
+    const ok = await updateSprintStatus(sprintId, 'ACTIVE')
+    setSprintActionId(null)
+    if (ok) await loadSprints()
   }
-  const completeSprint = (sprintId) => {
-    setSprints((prev) => prev.map((s) => (s.id === sprintId ? { ...s, status: 'COMPLETED' } : s)))
-    // WIRE: PATCH sprint status ACTIVE->COMPLETED -> refetch
+  const completeSprint = async (sprintId) => {
+    setSprintActionId(sprintId)
+    const ok = await updateSprintStatus(sprintId, 'COMPLETED')
+    setSprintActionId(null)
+    if (ok) await loadSprints()
+  }
+  // Fetch BEFORE opening the dialog — Syncfusion's Dialog portals to document.body on mount,
+  // and swapping the dialog's content shape (loading -> loaded) after that already-happened
+  // portal causes a React/Syncfusion DOM conflict (Uncaught NotFoundError: removeChild).
+  const onViewSprintDetails = async (sprintId) => {
+    setViewingSprintId(sprintId)
+    const data = await getSprintDetails(sprintId)
+    setViewingSprintId(null)
+    if (data) {
+      setSprintDetails(data)
+      setSprintDetailsOpen(true)
+    }
+  }
+  // Backend enforces the delete rule (PLANNED only); the button is disabled client-side to match.
+  const onDeleteSprint = async (sprint) => {
+    if (!window.confirm(`Delete sprint "${sprint.name}"? This cannot be undone.`)) return
+    setSprintActionId(sprint.id)
+    const ok = await deleteSprint(sprint.id)
+    setSprintActionId(null)
+    if (ok) await loadSprints()
   }
   const pullIntoSprint = (taskId, sprintId) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, sprintId } : t)))
     // WIRE: PATCH /task/{id} set sprint_id (pull from backlog into the sprint) -> refetch
+    // Not part of the sprint/feature APIs — needs sprintId support on the task update endpoint.
   }
 
-  const createFeature = (values) => {
-    setFeatures((prev) => [...prev, { id: Date.now(), projectId, status: 'PLANNED', ...values }])
-    // WIRE: await createFeature({ ...values, projectId }); await loadFeatures()
-    setFeatureFormOpen(false)
+  const onCreateFeature = async (values) => {
+    setCreatingFeature(true)
+    const ok = await createFeature({ ...values, projectId: Number(projectId) })
+    setCreatingFeature(false)
+    if (ok) {
+      setFeatureFormOpen(false)
+      await loadFeatures()
+    }
   }
-  const advanceFeature = (featureId, status) => {
-    setFeatures((prev) => prev.map((f) => (f.id === featureId ? { ...f, status } : f)))
-    // WIRE: PATCH feature status (PLANNED->IN_PROGRESS->DONE) -> refetch
+  const advanceFeature = async (featureId, status) => {
+    setFeatureActionId(featureId)
+    const ok = await updateFeatureStatus(featureId, status)
+    setFeatureActionId(null)
+    if (ok) await loadFeatures()
+  }
+  // Same fetch-before-open pattern as onViewSprintDetails (see its comment for why).
+  const onViewFeatureDetails = async (featureId) => {
+    setViewingFeatureId(featureId)
+    const data = await getFeatureDetails(featureId)
+    setViewingFeatureId(null)
+    if (data) {
+      setFeatureDetails(data)
+      setFeatureDetailsOpen(true)
+    }
+  }
+  // Backend enforces the delete rule (PLANNED only); the button is disabled client-side to match.
+  const onDeleteFeature = async (feature) => {
+    if (!window.confirm(`Delete feature "${feature.name}"? This cannot be undone.`)) return
+    setFeatureActionId(feature.id)
+    const ok = await deleteFeature(feature.id)
+    setFeatureActionId(null)
+    if (ok) await loadFeatures()
   }
 
-  const pullableSprints = projectSprints.filter((s) => s.status !== 'COMPLETED').map((s) => ({ value: s.id, text: s.name }))
+  const pullableSprints = projectSprints.filter((s) => s.sprintStatus !== 'COMPLETED').map((s) => ({ value: s.id, text: s.name }))
 
   /* =====================================================================
      MY BOARD (no project in the route) — personal, cross-project, no sprints
@@ -236,7 +337,7 @@ function Board() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
               <h4 style={{ fontSize: '1.6rem' }}>Project Board <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>project #{projectId}</span></h4>
-              <p className="muted" style={{ fontSize: 13 }}>Sprint board + backlog. Owner grooms the backlog and runs sprints; members work the active sprint.</p>
+              <p className="muted" style={{ fontSize: 13 }}>Sprint board, backlog, sprints and features. Owner grooms the backlog and runs sprints; members work the active sprint.</p>
             </div>
             {/* DEMO role toggle — WIRE: real role from workspace_user.role */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -247,9 +348,11 @@ function Board() {
           </div>
 
           {/* tabs */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             {tabBtn('sprint', 'Sprint Board')}
             {tabBtn('backlog', `Backlog (${backlogTasks.length})`)}
+            {tabBtn('sprints', `Sprints (${projectSprints.length})`)}
+            {tabBtn('features', `Features (${projectFeatures.length})`)}
           </div>
 
           {/* ---------------- SPRINT BOARD ---------------- */}
@@ -260,7 +363,7 @@ function Board() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <strong style={{ fontSize: 16 }}>{activeSprint.name}</strong>
-                      {sprintPill(activeSprint.status)}
+                      {sprintPill(activeSprint.sprintStatus)}
                     </div>
                     <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                       {activeSprint.startDate && activeSprint.endDate ? `${activeSprint.startDate} → ${activeSprint.endDate} · ` : ''}{activeSprint.goal}
@@ -268,16 +371,18 @@ function Board() {
                   </div>
                   {/* owner-only sprint control */}
                   {isOwner && (
-                    <ButtonComponent cssClass="e-outline" onClick={() => completeSprint(activeSprint.id)}>Complete Sprint</ButtonComponent>
+                    <ButtonComponent cssClass="e-outline" disabled={sprintActionId === activeSprint.id} onClick={() => completeSprint(activeSprint.id)}>
+                      {sprintActionId === activeSprint.id ? 'Completing…' : 'Complete Sprint'}
+                    </ButtonComponent>
                   )}
                 </div>
               ) : (
                 <div className="card" style={{ padding: 32, textAlign: 'center', marginBottom: 16, border: '2px dashed var(--border)', boxShadow: 'none' }}>
                   <h6 style={{ fontSize: 16, marginBottom: 6 }}>No active sprint</h6>
                   <p className="muted" style={{ marginBottom: isOwner ? 12 : 0 }}>
-                    {isOwner ? 'Create a sprint and start it from the Backlog tab.' : 'The owner hasn’t started a sprint yet.'}
+                    {isOwner ? 'Create a sprint and start it from the Sprints tab.' : 'The owner hasn’t started a sprint yet.'}
                   </p>
-                  {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setTab('backlog')}>Go to Backlog →</ButtonComponent>}
+                  {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setTab('sprints')}>Go to Sprints →</ButtonComponent>}
                 </div>
               )}
 
@@ -296,123 +401,236 @@ function Board() {
             </>
           )}
 
-          {/* ---------------- BACKLOG ---------------- */}
+          {/* ---------------- BACKLOG (unscheduled tasks only) ---------------- */}
           {tab === 'backlog' && (
-            <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              {/* backlog list */}
-              <div style={{ flex: 2, minWidth: 320 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h6 style={{ fontSize: 16 }}>Backlog <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· unscheduled tasks</span></h6>
-                  {/* owner adds tasks to the backlog */}
-                  {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setFormOpen(true)}>+ New Task</ButtonComponent>}
-                </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h6 style={{ fontSize: 16 }}>Backlog <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· unscheduled tasks</span></h6>
+                {/* owner adds tasks to the backlog */}
+                {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setFormOpen(true)}>+ New Task</ButtonComponent>}
+              </div>
 
-                {backlogTasks.length === 0 ? (
-                  <p className="muted" style={{ padding: '24px 0', textAlign: 'center' }}>Backlog is empty.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {backlogTasks.map((t) => (
-                      <div key={t.id} className="card" style={{ padding: 12, boxShadow: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/task/${t.id}`)}>
-                          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t.title}</div>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {badge(t.taskType, TYPE_COLOR[t.taskType] || '#64748b')}
-                            {badge(t.taskPriority, PRIORITY_COLOR[t.taskPriority] || '#64748b')}
-                            {t.featureId && badge(featureById(t.featureId)?.name, FEATURE_COLOR)}
-                          </div>
+              {backlogTasks.length === 0 ? (
+                <p className="muted" style={{ padding: '24px 0', textAlign: 'center' }}>Backlog is empty.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {backlogTasks.map((t) => (
+                    <div key={t.id} className="card" style={{ padding: 12, boxShadow: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/task/${t.id}`)}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t.title}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {badge(t.taskType, TYPE_COLOR[t.taskType] || '#64748b')}
+                          {badge(t.taskPriority, PRIORITY_COLOR[t.taskPriority] || '#64748b')}
+                          {t.featureId && badge(features.find((f) => f.id === t.featureId)?.name, FEATURE_COLOR)}
                         </div>
-                        {/* owner pulls a backlog task into a sprint */}
-                        {isOwner && pullableSprints.length > 0 && (
-                          <div style={{ width: 180 }}>
-                            <DropDownListComponent
-                              dataSource={pullableSprints}
-                              fields={{ text: 'text', value: 'value' }}
-                              placeholder="Add to sprint…"
-                              value={null}
-                              change={(e) => e.value && pullIntoSprint(t.id, e.value)}
-                            />
+                      </div>
+                      {/* owner pulls a backlog task into a sprint */}
+                      {isOwner && pullableSprints.length > 0 && (
+                        <div style={{ width: 180 }}>
+                          <DropDownListComponent
+                            dataSource={pullableSprints}
+                            fields={{ text: 'text', value: 'value' }}
+                            placeholder="Add to sprint…"
+                            value={null}
+                            change={(e) => e.value && pullIntoSprint(t.id, e.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ---------------- SPRINTS (grouped by status, each group expandable) ---------------- */}
+          {tab === 'sprints' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h6 style={{ fontSize: 16 }}>Sprints</h6>
+                {isOwner && <ButtonComponent cssClass="e-primary" onClick={openNewSprintForm}>+ New Sprint</ButtonComponent>}
+              </div>
+
+              {projectSprints.length === 0 ? (
+                <p className="muted" style={{ fontSize: 13 }}>No sprints yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {SPRINT_STATUS_ORDER.map((status) => {
+                    const group = projectSprints.filter((s) => s.sprintStatus === status)
+                    const isOpen = openSprintGroups[status]
+                    return (
+                      <div key={status} className="card" style={{ boxShadow: 'none', overflow: 'hidden' }}>
+                        <div
+                          onClick={() => toggleSprintGroup(status)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}
+                        >
+                          {sprintPill(status)}
+                          <strong style={{ fontSize: 13.5 }}>{group.length} sprint{group.length !== 1 ? 's' : ''}</strong>
+                          <span style={{ flex: 1 }} />
+                          <span className="muted" style={{ fontSize: 12 }}>{isOpen ? '▲ Collapse' : '▼ Expand'}</span>
+                        </div>
+                        {isOpen && (
+                          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                            {group.length === 0 ? (
+                              <p className="muted" style={{ fontSize: 13, padding: '16px 0 0' }}>No {status.toLowerCase()} sprints.</p>
+                            ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 16 }}>
+                                {group.map((s) => {
+                                  const count = projectTasks.filter((t) => t.sprintId === s.id).length
+                                  const busy = sprintActionId === s.id
+                                  return (
+                                    <div key={s.id} className="card" style={{ padding: 12, boxShadow: 'none' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <strong style={{ fontSize: 13.5, flex: 1 }}>{s.name}</strong>
+                                        {sprintPill(s.sprintStatus)}
+                                      </div>
+                                      <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{count} task{count !== 1 ? 's' : ''}{s.goal ? ` · ${s.goal}` : ''}</div>
+                                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {/* available to everyone — read-only, backed by GET /sprints/{sprintId} */}
+                                        <ButtonComponent
+                                          type="button"
+                                          cssClass="e-outline"
+                                          disabled={viewingSprintId === s.id}
+                                          onClick={() => onViewSprintDetails(s.id)}
+                                        >
+                                          {viewingSprintId === s.id ? 'Loading…' : 'Details'}
+                                        </ButtonComponent>
+                                        {/* owner-only lifecycle controls, conditional on status */}
+                                        {isOwner && s.sprintStatus === 'PLANNED' && (
+                                          <>
+                                            <ButtonComponent cssClass="e-primary" disabled={busy} onClick={() => startSprint(s.id)}>
+                                              {busy ? 'Starting…' : 'Start Sprint'}
+                                            </ButtonComponent>
+                                            <ButtonComponent cssClass="e-outline" disabled={busy} onClick={() => openEditSprintForm(s)}>Edit</ButtonComponent>
+                                          </>
+                                        )}
+                                        {isOwner && s.sprintStatus === 'ACTIVE' && (
+                                          <ButtonComponent cssClass="e-outline" disabled={busy} onClick={() => completeSprint(s.id)}>
+                                            {busy ? 'Completing…' : 'Complete Sprint'}
+                                          </ButtonComponent>
+                                        )}
+                                        {isOwner && (
+                                          <ButtonComponent
+                                            cssClass="e-flat tc-delete-btn"
+                                            disabled={busy || s.sprintStatus !== 'PLANNED'}
+                                            title={s.sprintStatus !== 'PLANNED' ? `${s.sprintStatus === 'ACTIVE' ? 'Active' : 'Completed'} sprints cannot be deleted` : undefined}
+                                            onClick={() => onDeleteSprint(s)}
+                                          >
+                                            {busy ? 'Working…' : 'Delete'}
+                                          </ButtonComponent>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* sprints panel */}
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h6 style={{ fontSize: 16 }}>Sprints</h6>
-                  {isOwner && <ButtonComponent cssClass="e-outline" onClick={() => setSprintFormOpen(true)}>+ New Sprint</ButtonComponent>}
+                    )
+                  })}
                 </div>
+              )}
+            </div>
+          )}
 
-                {projectSprints.length === 0 ? (
-                  <p className="muted" style={{ fontSize: 13 }}>No sprints yet.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {projectSprints.map((s) => {
-                      const count = projectTasks.filter((t) => t.sprintId === s.id).length
-                      return (
-                        <div key={s.id} className="card" style={{ padding: 12, boxShadow: 'none' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <strong style={{ fontSize: 13.5, flex: 1 }}>{s.name}</strong>
-                            {sprintPill(s.status)}
-                          </div>
-                          <div className="muted" style={{ fontSize: 12, marginBottom: isOwner ? 10 : 0 }}>{count} task{count !== 1 ? 's' : ''}{s.goal ? ` · ${s.goal}` : ''}</div>
-                          {/* owner-only lifecycle controls, conditional on status */}
-                          {isOwner && s.status === 'PLANNED' && (
-                            <ButtonComponent cssClass="e-primary" onClick={() => startSprint(s.id)}>Start Sprint</ButtonComponent>
-                          )}
-                          {isOwner && s.status === 'ACTIVE' && (
-                            <ButtonComponent cssClass="e-outline" onClick={() => completeSprint(s.id)}>Complete Sprint</ButtonComponent>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+          {/* ---------------- FEATURES (grouped by status, each group expandable) ---------------- */}
+          {tab === 'features' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h6 style={{ fontSize: 16 }}>Features</h6>
+                {isOwner && <ButtonComponent cssClass="e-primary" onClick={() => setFeatureFormOpen(true)}>+ New Feature</ButtonComponent>}
               </div>
-
-              {/* features panel (epics) — owner-managed, orthogonal to sprints */}
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h6 style={{ fontSize: 16 }}>Features</h6>
-                  {isOwner && <ButtonComponent cssClass="e-outline" onClick={() => setFeatureFormOpen(true)}>+ New Feature</ButtonComponent>}
+              {projectFeatures.length === 0 ? (
+                <p className="muted" style={{ fontSize: 13 }}>No features yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {FEATURE_STATUS_ORDER.map((status) => {
+                    const group = projectFeatures.filter((f) => f.featureStatus === status)
+                    const isOpen = openFeatureGroups[status]
+                    return (
+                      <div key={status} className="card" style={{ boxShadow: 'none', overflow: 'hidden' }}>
+                        <div
+                          onClick={() => toggleFeatureGroup(status)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}
+                        >
+                          {featurePill(status)}
+                          <strong style={{ fontSize: 13.5 }}>{group.length} feature{group.length !== 1 ? 's' : ''}</strong>
+                          <span style={{ flex: 1 }} />
+                          <span className="muted" style={{ fontSize: 12 }}>{isOpen ? '▲ Collapse' : '▼ Expand'}</span>
+                        </div>
+                        {isOpen && (
+                          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                            {group.length === 0 ? (
+                              <p className="muted" style={{ fontSize: 13, padding: '16px 0 0' }}>No {status.toLowerCase().replace('_', ' ')} features.</p>
+                            ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 16 }}>
+                                {group.map((f) => {
+                                  const count = projectTasks.filter((t) => t.featureId === f.id).length
+                                  const busy = featureActionId === f.id
+                                  return (
+                                    <div key={f.id} className="card" style={{ padding: 12, boxShadow: 'none' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <strong style={{ fontSize: 13.5, flex: 1 }}>{f.name}</strong>
+                                        {featurePill(f.featureStatus)}
+                                      </div>
+                                      <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{count} task{count !== 1 ? 's' : ''}{f.dueDate ? ` · due ${f.dueDate}` : ''}</div>
+                                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {/* available to everyone — read-only, backed by GET /feature/{featureId} */}
+                                        <ButtonComponent
+                                          type="button"
+                                          cssClass="e-outline"
+                                          disabled={viewingFeatureId === f.id}
+                                          onClick={() => onViewFeatureDetails(f.id)}
+                                        >
+                                          {viewingFeatureId === f.id ? 'Loading…' : 'Details'}
+                                        </ButtonComponent>
+                                        {/* owner-only lifecycle controls, conditional on status */}
+                                        {isOwner && f.featureStatus === 'PLANNED' && (
+                                          <ButtonComponent cssClass="e-primary" disabled={busy} onClick={() => advanceFeature(f.id, 'IN_PROGRESS')}>
+                                            {busy ? 'Starting…' : 'Start'}
+                                          </ButtonComponent>
+                                        )}
+                                        {isOwner && f.featureStatus === 'IN_PROGRESS' && (
+                                          <ButtonComponent cssClass="e-outline" disabled={busy} onClick={() => advanceFeature(f.id, 'DONE')}>
+                                            {busy ? 'Updating…' : 'Mark Done'}
+                                          </ButtonComponent>
+                                        )}
+                                        {isOwner && (
+                                          <ButtonComponent
+                                            cssClass="e-flat tc-delete-btn"
+                                            disabled={busy || f.featureStatus !== 'PLANNED'}
+                                            title={f.featureStatus !== 'PLANNED' ? `${f.featureStatus === 'IN_PROGRESS' ? 'In-progress' : 'Done'} features cannot be deleted` : undefined}
+                                            onClick={() => onDeleteFeature(f)}
+                                          >
+                                            {busy ? 'Working…' : 'Delete'}
+                                          </ButtonComponent>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                {projectFeatures.length === 0 ? (
-                  <p className="muted" style={{ fontSize: 13 }}>No features yet.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {projectFeatures.map((f) => {
-                      const count = projectTasks.filter((t) => t.featureId === f.id).length
-                      return (
-                        <div key={f.id} className="card" style={{ padding: 12, boxShadow: 'none' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <strong style={{ fontSize: 13.5, flex: 1 }}>{f.name}</strong>
-                            {featurePill(f.status)}
-                          </div>
-                          <div className="muted" style={{ fontSize: 12, marginBottom: isOwner && f.status !== 'DONE' ? 10 : 0 }}>{count} task{count !== 1 ? 's' : ''}</div>
-                          {isOwner && f.status === 'PLANNED' && (
-                            <ButtonComponent cssClass="e-primary" onClick={() => advanceFeature(f.id, 'IN_PROGRESS')}>Start</ButtonComponent>
-                          )}
-                          {isOwner && f.status === 'IN_PROGRESS' && (
-                            <ButtonComponent cssClass="e-outline" onClick={() => advanceFeature(f.id, 'DONE')}>Mark Done</ButtonComponent>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
         </main>
       </div>
 
       {/* dialogs */}
-      <TaskForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={onCreate} sprints={SPRINTS} features={FEATURES} />
-      <SprintForm open={sprintFormOpen} onClose={() => setSprintFormOpen(false)} onSubmit={onCreateSprint} />
-      <FeatureForm open={featureFormOpen} onClose={() => setFeatureFormOpen(false)} onSubmit={createFeature} />
+      <TaskForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={onCreate} sprints={sprints} features={features} />
+      <SprintForm open={sprintFormOpen} onClose={closeSprintForm} onSubmit={onSubmitSprintForm} submitting={creatingSprint} sprint={editingSprint} />
+      <SprintDetailsModal open={sprintDetailsOpen} onClose={() => setSprintDetailsOpen(false)} sprint={sprintDetails} />
+      <FeatureForm open={featureFormOpen} onClose={() => setFeatureFormOpen(false)} onSubmit={onCreateFeature} submitting={creatingFeature} />
+      <FeatureDetailsModal open={featureDetailsOpen} onClose={() => setFeatureDetailsOpen(false)} feature={featureDetails} />
     </div>
   )
 }

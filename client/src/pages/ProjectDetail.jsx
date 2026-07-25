@@ -51,7 +51,10 @@ function ProjectDetail() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--app-bg)', padding: 32 }}>
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-        <ButtonComponent cssClass="e-flat" onClick={() => navigate(`/workspace/${workspaceId}`)}>← Back to Workspace</ButtonComponent>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <ButtonComponent cssClass="e-flat" onClick={() => navigate(`/workspace/${workspaceId}`)}>← Back to Workspace</ButtonComponent>
+          <ButtonComponent cssClass="e-primary" onClick={() => navigate(`/workspace/${workspaceId}/project/${projectId}/board`, { state: location.state })}>Open Board →</ButtonComponent>
+        </div>
 
         {isLoading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 320 }}><p className="muted">Loading project...</p></div>
