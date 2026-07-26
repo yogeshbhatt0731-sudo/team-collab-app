@@ -5,9 +5,10 @@ import { API_BASE_URL } from './config'
 // ===== Project endpoints =====
 
 
+
 //Get Headers for userId
 function userHeaders(userId) {
-  return { 'X-User-Id': userId }
+  return { 'X-User-Id': 100 }
 }
 
 
