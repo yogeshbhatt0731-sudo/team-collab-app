@@ -12,7 +12,7 @@ import FeatureForm from '../components/FeatureForm'
 import FeatureDetailsModal from '../components/FeatureDetailsModal'
 import { toast } from 'react-toastify'
 import { memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
-import { listTasks, listAssignedTasks, createTask, changeStatus } from "../services/taskService.js";
+import { listTasks, listAssignedTasks, createTask, changeStatus, deleteTask, setTaskSprint, setTaskFeature } from "../services/taskService.js";
 import { listSprints, createSprint, updateSprint, updateSprintStatus, deleteSprint, getSprintDetails } from "../services/sprintService.js";
 import { listFeatures, createFeature, updateFeatureStatus, deleteFeature, getFeatureDetails } from "../services/featureService.js";
 
@@ -32,14 +32,26 @@ function badge(text, color) {
 
 // data-taskid lets the board catch a click via delegation (see handlers below).
 // Factory so the card can badge a task's feature from the CURRENT (API-backed) features list.
-function makeCardTemplate(features) {
+// canDelete gates the little trash control (owner on the project board; always on My Board).
+function makeCardTemplate(features, canDelete) {
   const findFeature = (featureId) => features.find((f) => f.id === featureId)
   return function cardTemplate(task) {
     const assignees = (task.assignees || []).map(memberById).filter(Boolean)
     const feature = task.featureId ? findFeature(task.featureId) : null
     return (
-      <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer' }}>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+      <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer', position: 'relative' }}>
+        {/* data-deletetask is caught by the same click delegation (onClickCapture) that opens a
+            task — that handler checks for the delete control FIRST and skips navigation. */}
+        {canDelete && (
+          <span
+            data-deletetask={task.id}
+            title="Delete task"
+            style={{ position: 'absolute', top: 8, right: 8, fontSize: 13, lineHeight: 1, color: '#94a3b8', padding: 2, borderRadius: 4 }}
+          >
+            🗑
+          </span>
+        )}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', paddingRight: canDelete ? 20 : 0 }}>
           {badge(task.taskType, TYPE_COLOR[task.taskType] || '#64748b')}
           {badge(task.taskPriority, PRIORITY_COLOR[task.taskPriority] || '#64748b')}
           {feature && badge(feature.name, FEATURE_COLOR)}
@@ -156,13 +168,21 @@ function Board() {
   // My Board (no project): the list is ALREADY only my tasks (GET /task/assigned filters by me),
   // so no client-side assignee filter is needed — just show what came back.
   const myTasks = tasks
-  const cardTemplate = makeCardTemplate(features)
+  // Delete control: owner-gated on a project board; on My Board (personal) you always manage your own.
+  const cardTemplate = makeCardTemplate(features, projectId ? isOwner : true)
 
   /* ---------- click vs drag on the Kanban ---------- */
   const onPointerDownCapture = (e) => { down.current = { x: e.clientX, y: e.clientY } }
   const onClickCapture = (e) => {
     const moved = Math.abs(e.clientX - down.current.x) > 6 || Math.abs(e.clientY - down.current.y) > 6
     if (moved) return
+    // Delete control sits INSIDE the card — check it first so we delete instead of navigating.
+    const del = e.target.closest('[data-deletetask]')
+    if (del) {
+      e.stopPropagation()
+      onDeleteTask(del.getAttribute('data-deletetask'))
+      return
+    }
     const el = e.target.closest('[data-taskid]')
     if (el) navigate(`/task/${el.getAttribute('data-taskid')}`)
   }
@@ -196,6 +216,17 @@ function Board() {
     setFormOpen(false)
   }
 
+  // Delete a task from a Kanban card (DELETE /task/{id}) — server cascades assignees + comments.
+  // taskId arrives as a string from the card's data attribute; the URL is fine with that.
+  const onDeleteTask = async (taskId) => {
+    if (!window.confirm('Delete this task? This cannot be undone.')) return
+    const ok = await deleteTask(taskId)
+    if (ok) {
+      toast.success('Task deleted')
+      await loadTasks()   // refetch so the removed card disappears
+    }
+  }
+
   const openNewSprintForm = () => { setEditingSprint(null); setSprintFormOpen(true) }
   const openEditSprintForm = (sprint) => { setEditingSprint(sprint); setSprintFormOpen(true) }
   const closeSprintForm = () => { setSprintFormOpen(false); setEditingSprint(null) }
@@ -224,7 +255,11 @@ function Board() {
     setSprintActionId(sprintId)
     const ok = await updateSprintStatus(sprintId, 'COMPLETED')
     setSprintActionId(null)
-    if (ok) await loadSprints()
+    if (ok) {
+      // Backend rolls the sprint's unfinished tasks back to the backlog on completion,
+      // so refetch tasks too (not just sprints) to reflect that on the board.
+      await Promise.all([loadSprints(), loadTasks()])
+    }
   }
   // Fetch BEFORE opening the dialog — Syncfusion's Dialog portals to document.body on mount,
   // and swapping the dialog's content shape (loading -> loaded) after that already-happened
@@ -246,10 +281,22 @@ function Board() {
     setSprintActionId(null)
     if (ok) await loadSprints()
   }
-  const pullIntoSprint = (taskId, sprintId) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, sprintId } : t)))
-    // WIRE: PATCH /task/{id} set sprint_id (pull from backlog into the sprint) -> refetch
-    // Not part of the sprint/feature APIs — needs sprintId support on the task update endpoint.
+  // Pull a backlog task into a sprint (PATCH /task/{id}/sprint) then refetch so it leaves the backlog.
+  const pullIntoSprint = async (taskId, sprintId) => {
+    const ok = await setTaskSprint(taskId, sprintId)
+    if (ok) {
+      toast.success('Task added to sprint')
+      await loadTasks()
+    }
+  }
+
+  // Attach a backlog task to a feature (PATCH /task/{id}/feature) then refetch so the badge shows.
+  const attachToFeature = async (taskId, featureId) => {
+    const ok = await setTaskFeature(taskId, featureId)
+    if (ok) {
+      toast.success('Task added to feature')
+      await loadTasks()
+    }
   }
 
   const onCreateFeature = async (values) => {
@@ -287,6 +334,8 @@ function Board() {
   }
 
   const pullableSprints = projectSprints.filter((s) => s.sprintStatus !== 'COMPLETED').map((s) => ({ value: s.id, text: s.name }))
+  // Features to attach a backlog task to (DONE features are closed — don't offer them).
+  const attachableFeatures = projectFeatures.filter((f) => f.featureStatus !== 'DONE').map((f) => ({ value: f.id, text: f.name }))
 
   /* =====================================================================
      MY BOARD (no project in the route) — personal, cross-project, no sprints
@@ -435,6 +484,28 @@ function Board() {
                             change={(e) => e.value && pullIntoSprint(t.id, e.value)}
                           />
                         </div>
+                      )}
+                      {/* owner attaches a backlog task to a feature */}
+                      {isOwner && attachableFeatures.length > 0 && (
+                        <div style={{ width: 180 }}>
+                          <DropDownListComponent
+                            dataSource={attachableFeatures}
+                            fields={{ text: 'text', value: 'value' }}
+                            placeholder={t.featureId ? 'Change feature…' : 'Add to feature…'}
+                            value={t.featureId ?? null}
+                            change={(e) => e.value && e.value !== t.featureId && attachToFeature(t.id, e.value)}
+                          />
+                        </div>
+                      )}
+                      {/* owner deletes a backlog task (these are plain cards, not Kanban -> real onClick) */}
+                      {isOwner && (
+                        <ButtonComponent
+                          cssClass="e-flat tc-delete-btn"
+                          title="Delete task"
+                          onClick={() => onDeleteTask(t.id)}
+                        >
+                          🗑
+                        </ButtonComponent>
                       )}
                     </div>
                   ))}

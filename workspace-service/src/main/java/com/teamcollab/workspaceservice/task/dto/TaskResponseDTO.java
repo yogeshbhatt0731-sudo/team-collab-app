@@ -23,4 +23,5 @@ public class TaskResponseDTO {
 	private LocalDateTime dueDate;
 	private LocalDateTime createdAt;
 	private Long sprintId;
+	private Long featureId;
 }
