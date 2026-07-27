@@ -103,6 +103,57 @@ export async function changeStatus(taskId, taskStatus){
     }
 }
 
+// DELETE /task/{task_id}
+// Server cascades the task's assignees + comments, then removes it.
+// Returns true/false so the caller can toast + refetch itself.
+export async function deleteTask(taskId){
+    try{
+        await axios.delete(config.BASE_URL+'/task/'+taskId, {headers})
+        return true
+    }
+    catch(err){
+        console.error('deleteTask failed:', err.message)
+        toast.error(err.response?.data?.message || err.message)
+        return false
+    }
+}
+
+// PATCH /task/{task_id}/sprint, payload: TaskSprintUpdateDTO { sprintId }
+// Attach the task to a sprint; pass sprintId = null to pull it back to the backlog.
+export async function setTaskSprint(taskId, sprintId){
+    try{
+        await axios.patch(
+            config.BASE_URL+'/task/'+taskId+'/sprint',
+            { sprintId },
+            {headers}
+        )
+        return true
+    }
+    catch(err){
+        console.error('setTaskSprint failed:', err.message)
+        toast.error(err.response?.data?.message || err.message)
+        return false
+    }
+}
+
+// PATCH /task/{task_id}/feature, payload: TaskFeatureUpdateDTO { featureId }
+// Attach the task to a feature; pass featureId = null to detach it.
+export async function setTaskFeature(taskId, featureId){
+    try{
+        await axios.patch(
+            config.BASE_URL+'/task/'+taskId+'/feature',
+            { featureId },
+            {headers}
+        )
+        return true
+    }
+    catch(err){
+        console.error('setTaskFeature failed:', err.message)
+        toast.error(err.response?.data?.message || err.message)
+        return false
+    }
+}
+
 // ===== Task Assignee endpoints =====
 
 // GET /task/{task_id}/assignees -> List<TaskAssigneeResponseDTO> [{ userId, assignedAt }]

@@ -19,6 +19,12 @@ public interface TaskAssigneeRepository extends JpaRepository<TaskAssignee,TaskU
     @Query("delete from TaskAssignee ta where ta.taskUserId.userId=:uid and ta.taskUserId.taskId=:tid")
     public int deleteAssignee(@Param("uid") Long uid, @Param("tid") Long tid);
 
+    // Wipe every assignee row for a task — used when the task itself is deleted
+    // (the task_assignee FK to task would otherwise block the delete).
+    @Modifying
+    @Query("delete from TaskAssignee ta where ta.taskUserId.taskId=:tid")
+    public int deleteByTask(@Param("tid") Long tid);
+
     @Query("select ta from TaskAssignee ta where ta.taskUserId.userId=:uid and ta.taskUserId.taskId=:tid")
     public TaskAssignee getAssignee(@Param("uid") Long uid, @Param("tid") Long tid);
 }

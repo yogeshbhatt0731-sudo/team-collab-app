@@ -2,11 +2,14 @@ package com.teamcollab.workspaceservice.task.service;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.common.security.UserContext;
+import com.teamcollab.workspaceservice.feature.service.FeatureService;
 import com.teamcollab.workspaceservice.project.entities.Project;
 import com.teamcollab.workspaceservice.project.service.ProjectService;
+import com.teamcollab.workspaceservice.sprint.service.SprintService;
 import com.teamcollab.workspaceservice.task.dto.*;
 import com.teamcollab.workspaceservice.task.entities.*;
 import com.teamcollab.workspaceservice.task.exception.*;
+import com.teamcollab.workspaceservice.task.repository.CommentRepository;
 import com.teamcollab.workspaceservice.task.repository.TaskAssigneeRepository;
 import com.teamcollab.workspaceservice.task.repository.TaskRepository;
 
@@ -30,8 +33,11 @@ public class TaskServiceImpl implements TaskService{
 	private final UserContext userContext;
 	private final TaskRepository taskRepository;
 	private final TaskAssigneeRepository taskAssigneeRepository;
+	private final CommentRepository commentRepository;
     private final ModelMapper mapper;
     private final ProjectService projectService;
+    private final SprintService sprintService;
+    private final FeatureService featureService;
 
 
 
@@ -118,6 +124,53 @@ public class TaskServiceImpl implements TaskService{
 
 		task.setTaskStatus(taskStatusUpdateDTO.getTaskStatus());
 		return new ApiResponse("success","Task with taskId "+taskId+" task status updated successfully !!");
+	}
+
+	@Transactional
+	@Override
+	public ApiResponse deleteTaskById(Long taskId) {
+		// TODO [AUTH]: verify userContext.getUserId() may delete this task (project owner/creator) — 403 otherwise.
+		Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with "+taskId +" not found!!"));
+
+		// Clear the child rows first — task_assignee references the task in its composite key and
+		// comment.task_id is NOT NULL, so either would block the delete with an FK violation.
+		taskAssigneeRepository.deleteByTask(taskId);
+		commentRepository.deleteByTask(taskId);
+
+		taskRepository.delete(task);
+		return new ApiResponse("success","Task with taskId "+taskId+" deleted successfully !!");
+	}
+
+	@Transactional
+	@Override
+	public ApiResponse updateTaskSprint(Long taskId, Long sprintId) {
+		// TODO [AUTH]: verify userContext.getUserId() may groom this project's backlog (owner) — 403 otherwise.
+		Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with "+taskId +" not found!!"));
+
+		// null -> pull the task back to the backlog; otherwise attach it to an existing sprint
+		// (assertExists 404s on a bad id). Dirty checking flushes the change at commit.
+		if(sprintId == null) {
+			task.setMySprint(null);
+			return new ApiResponse("success","Task with taskId "+taskId+" moved to backlog !!");
+		}
+		task.setMySprint(sprintService.assertExists(sprintId));
+		return new ApiResponse("success","Task with taskId "+taskId+" added to sprint "+sprintId+" !!");
+	}
+
+	@Transactional
+	@Override
+	public ApiResponse updateTaskFeature(Long taskId, Long featureId) {
+		// TODO [AUTH]: verify userContext.getUserId() may groom this project's features (owner) — 403 otherwise.
+		Task task = taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task with "+taskId +" not found!!"));
+
+		// null -> detach from its feature; otherwise attach it to an existing feature
+		// (assertExists 404s on a bad id). Dirty checking flushes the change at commit.
+		if(featureId == null) {
+			task.setMyFeature(null);
+			return new ApiResponse("success","Task with taskId "+taskId+" detached from its feature !!");
+		}
+		task.setMyFeature(featureService.assertExists(featureId));
+		return new ApiResponse("success","Task with taskId "+taskId+" added to feature "+featureId+" !!");
 	}
 
 	@Override

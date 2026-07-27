@@ -17,6 +17,14 @@ public interface TaskService {
 
 	public ApiResponse changeTaskStatusById(Long taskId, TaskStatusUpdateDTO taskStatusUpdateDTO);
 
+	// Delete a task (and its assignee/comment rows). null sprintId/featureId on the
+	// two methods below detaches the task (moves it to the backlog / clears the feature).
+	public ApiResponse deleteTaskById(Long taskId);
+
+	public ApiResponse updateTaskSprint(Long taskId, Long sprintId);
+
+	public ApiResponse updateTaskFeature(Long taskId, Long featureId);
+
 	public ApiResponse assignTask(Long taskId, Long assigneeId);
 
 	public List<TaskAssigneeResponseDTO> getAssignees(Long taskId);

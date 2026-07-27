@@ -15,6 +15,8 @@ import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintStatusTrans
 import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintUpdationException;
 import com.teamcollab.workspaceservice.sprint.exception.SprintNotFoundException;
 import com.teamcollab.workspaceservice.sprint.repository.SprintRepository;
+import com.teamcollab.workspaceservice.task.entities.TaskStatus;
+import com.teamcollab.workspaceservice.task.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class SprintServiceImpl implements SprintService {
     private final ModelMapper modelMapper;
     private final UserContext userContext;
     private final ProjectRepository projectRepository;
+    private final TaskRepository taskRepository;
 
     //planned -> ACTIVE -> completed , i.e no skipping and no going back
     private static final Map<SprintStatus, SprintStatus> ALLOWED_TRANSITIONS = new EnumMap<>(SprintStatus.class);
@@ -127,6 +130,9 @@ public class SprintServiceImpl implements SprintService {
                 sprint.setStartDate(LocalDate.now());
             } else {
                 sprint.setEndDate(LocalDate.now());
+                //completing a sprint rolls its unfinished (non-DONE) tasks back to the backlog:
+                //their sprint FK is nulled out. DONE tasks stay as the sprint's completed history.
+                taskRepository.detachUnfinishedTasksFromSprint(sprintId, TaskStatus.DONE);
             }
         }
 

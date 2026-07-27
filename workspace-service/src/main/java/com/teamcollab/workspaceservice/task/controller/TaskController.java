@@ -114,6 +114,47 @@ public class TaskController {
 		return ResponseEntity.ok(taskService.changeTaskStatusById(taskId,taskStatusUpdateDTO));
 	}
 
+	/*
+	 Desc - Delete Task
+	 Uri - /task/{task_id}
+	 method - DELETE
+	 Resp - ApiResponse , succ mesg/err mesg
+	 */
+
+	@DeleteMapping("{task_id}")
+	public ResponseEntity<?> deleteTaskById(@PathVariable(name = "task_id") Long taskId)
+	{
+		return ResponseEntity.ok(taskService.deleteTaskById(taskId));
+	}
+
+	/*
+	 Desc - Add task to a sprint / move it back to the backlog
+	 Uri - /task/{task_id}/sprint
+	 method - PATCH
+	 Payload - TaskSprintUpdateDTO { Long sprintId }   (sprintId null -> backlog)
+	 Resp - ApiResponse , succ mesg/err mesg
+	 */
+
+	@PatchMapping("{task_id}/sprint")
+	public ResponseEntity<?> updateTaskSprint(@PathVariable(name = "task_id") Long taskId,@RequestBody TaskSprintUpdateDTO taskSprintUpdateDTO)
+	{
+		return ResponseEntity.ok(taskService.updateTaskSprint(taskId,taskSprintUpdateDTO.getSprintId()));
+	}
+
+	/*
+	 Desc - Attach task to a feature / detach it
+	 Uri - /task/{task_id}/feature
+	 method - PATCH
+	 Payload - TaskFeatureUpdateDTO { Long featureId }   (featureId null -> detach)
+	 Resp - ApiResponse , succ mesg/err mesg
+	 */
+
+	@PatchMapping("{task_id}/feature")
+	public ResponseEntity<?> updateTaskFeature(@PathVariable(name = "task_id") Long taskId,@RequestBody TaskFeatureUpdateDTO taskFeatureUpdateDTO)
+	{
+		return ResponseEntity.ok(taskService.updateTaskFeature(taskId,taskFeatureUpdateDTO.getFeatureId()));
+	}
+
 
 
 	// Task Assignee  Endpoints
