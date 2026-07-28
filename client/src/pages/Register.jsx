@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
 import { ButtonComponent, CheckBoxComponent } from '@syncfusion/ej2-react-buttons'
-import { mockUsers } from '../data/mockData'
+import { registerUser } from '../services/authService'
 
 const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }
 
@@ -10,19 +10,21 @@ function Register() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const navigate = useNavigate()
 
-  const handleSignUpClick = (e) => {
+  const handleSignUpClick = async (e) => {
     e.preventDefault()
     setError('')
     setSuccess('')
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !userName || !password || !confirmPassword) {
       setError('All fields are required')
       return
     }
@@ -38,22 +40,15 @@ function Register() {
       setError('Passwords do not match')
       return
     }
-    if (mockUsers.some((u) => u.email === email)) {
-      setError('User with this email already exists')
+
+    setSubmitting(true)
+    const result = await registerUser(firstName, lastName, email, userName, password)
+    setSubmitting(false)
+
+    if (!result.status) {
+      setError(result.error?.message || 'Could not create your account')
       return
     }
-
-    const newUser = {
-      id: `usr_${Date.now()}`,
-      name: `${firstName} ${lastName}`,
-      firstName,
-      lastName,
-      email,
-      username: email.split('@')[0],
-      role: 'DEVELOPER',
-      createdAt: new Date().toISOString(),
-    }
-    mockUsers.push(newUser)
 
     setSuccess('Registration successful! Redirecting to login...')
     setTimeout(() => navigate('/login'), 2000)
@@ -155,6 +150,10 @@ function Register() {
               <TextBoxComponent type="email" value={email} input={(e) => setEmail(e.value)} />
             </label>
             <label style={{ gridColumn: '1 / -1' }}>
+              <span style={labelStyle}>Username</span>
+              <TextBoxComponent value={userName} input={(e) => setUserName(e.value)} />
+            </label>
+            <label style={{ gridColumn: '1 / -1' }}>
               <span style={labelStyle}>Password</span>
               <TextBoxComponent type="password" value={password} input={(e) => setPassword(e.value)} />
             </label>
@@ -172,7 +171,7 @@ function Register() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
-            <ButtonComponent cssClass="tc-teal tc-block" onClick={handleSignUpClick}>Create account</ButtonComponent>
+            <ButtonComponent cssClass="tc-teal tc-block" disabled={submitting} onClick={handleSignUpClick}>{submitting ? 'Creating account…' : 'Create account'}</ButtonComponent>
             <p className="muted" style={{ textAlign: 'center' }}>
               Already have an account?{' '}
               <RouterLink to="/login" style={{ fontWeight: 600, color: '#0f766e' }}>Sign in</RouterLink>

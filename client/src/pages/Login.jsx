@@ -2,34 +2,42 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
 import { ButtonComponent, CheckBoxComponent } from '@syncfusion/ej2-react-buttons'
-import { mockUsers } from '../data/mockData'
+import { loginUser } from '../services/authService'
 
 function Login() {
-  const [email, setEmail] = useState('')
+  const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (!email || !password) {
-      setError('Please enter both email and password')
-      return
-    }
-    const user = mockUsers.find((u) => u.email === email)
-    if (!user) {
-      setError('User not found. Please check your email.')
-      return
-    }
-    if (password.length < 6) {
-      setError('Invalid password')
+    if (!userName || !password) {
+      setError('Please enter both username and password')
       return
     }
 
-    localStorage.setItem('clove_access_token', `token_${user.id}_${Date.now()}`)
-    localStorage.setItem('current_user', JSON.stringify(user))
+    setSubmitting(true)
+    const result = await loginUser(userName, password)
+    setSubmitting(false)
+
+    if (!result.status) {
+      setError(result.error?.message || 'Invalid username or password')
+      return
+    }
+
+    const { userId, name, userName: loggedInUserName, token } = result.data
+    localStorage.setItem('clove_access_token', token)
+    localStorage.setItem('current_user', JSON.stringify({
+      id: userId,
+      name,
+      firstName: name?.split(' ')[0] || '',
+      lastName: name?.split(' ').slice(1).join(' ') || '',
+      userName: loggedInUserName,
+    }))
     navigate('/home')
   }
 
@@ -96,7 +104,7 @@ function Login() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontWeight: 600 }}>Everything in one place</div>
             <div style={{ opacity: 0.82 }}>Projects, conversations, and team coordination built for everyday work.</div>
-            <div style={{ opacity: 0.7, fontSize: 12, marginTop: 8 }}>Demo: Use yogesh@example.com / password</div>
+            <div style={{ opacity: 0.7, fontSize: 12, marginTop: 8 }}>Sign in with the username you registered with.</div>
           </div>
         </div>
 
@@ -104,7 +112,7 @@ function Login() {
         <form noValidate onSubmit={handleLogin} style={{ padding: 40, background: '#fffdfa' }}>
           <div style={{ marginBottom: 32 }}>
             <h4 style={{ fontSize: '1.75rem', color: '#162033' }}>Sign in</h4>
-            <p className="muted" style={{ marginTop: 6 }}>Use your email and password to access your account.</p>
+            <p className="muted" style={{ marginTop: 6 }}>Use your username and password to access your account.</p>
           </div>
 
           {error && (
@@ -124,8 +132,8 @@ function Login() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email address</span>
-              <TextBoxComponent type="email" value={email} input={(e) => setEmail(e.value)} />
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Username</span>
+              <TextBoxComponent value={userName} input={(e) => setUserName(e.value)} />
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Password</span>
@@ -139,7 +147,7 @@ function Login() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
-            <ButtonComponent cssClass="tc-teal tc-block" onClick={handleLogin}>Sign in</ButtonComponent>
+            <ButtonComponent cssClass="tc-teal tc-block" disabled={submitting} onClick={handleLogin}>{submitting ? 'Signing in…' : 'Sign in'}</ButtonComponent>
             <p className="muted" style={{ textAlign: 'center' }}>
               Don&apos;t have an account?{' '}
               <RouterLink to="/register" style={{ fontWeight: 600, color: '#0f766e' }}>Create one</RouterLink>
