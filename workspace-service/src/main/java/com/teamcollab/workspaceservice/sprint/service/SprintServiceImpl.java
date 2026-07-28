@@ -58,13 +58,10 @@ public class SprintServiceImpl implements SprintService {
     @Override
     public ApiResponse createSprint(SprintRequestDTO sprintRequestDTO) {
 
-        //todo- user-admin validation
-
         //later to be replaced by project utility reader class to asserts the project existence.
         Project project = projectRepository.findById(sprintRequestDTO.getProjectId())
                 .orElseThrow(() -> new ProjectNotFoundException(
                         "Project with id: " + sprintRequestDTO.getProjectId() + " does not exist"));
-
 
         //create new sprint entity
         Sprint sprint = modelMapper.map(sprintRequestDTO, Sprint.class);
@@ -108,15 +105,9 @@ public class SprintServiceImpl implements SprintService {
 
     @Override
     public ApiResponse updateSprintStatus(Long sprintId, SprintStatusUpdateDTO sprintStatusUpdateDTO) {
-        //todo- admin check
-
-//        Sprint sprint = sprintRepository.findById(sprintId)
-//                .orElseThrow(() -> new SprintNotFoundException(
-//                        "Sprint with id: " + sprintId + " does not exist"));
         Sprint sprint = this.assertExists(sprintId);
 
         //sprint - persistent (managed) entity
-
         //sprint status transitions check
         SprintStatus current = sprint.getSprintStatus();
         SprintStatus target = sprintStatusUpdateDTO.getSprintStatus();
@@ -148,10 +139,6 @@ public class SprintServiceImpl implements SprintService {
 
     @Override
     public ApiResponse updateSprint(Long sprintId, SprintUpdateRequestDTO sprintUpdateRequestDTO) {
-
-//        Sprint sprint = sprintRepository.findById(sprintId)
-//                .orElseThrow(() -> new SprintNotFoundException(
-//                        "Sprint with id: " + sprintId + " does not exist"));
         Sprint sprint = this.assertExists(sprintId);
 
         if (!(sprint.getSprintStatus().equals(SprintStatus.PLANNED))) {
