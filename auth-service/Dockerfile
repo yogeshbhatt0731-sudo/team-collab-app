@@ -6,6 +6,8 @@ WORKDIR /app
 COPY pom.xml .
 COPY .mvn .mvn
 COPY mvnw .
+RUN chmod +x mvnw
+
 RUN ./mvnw -B dependency:go-offline
 
 # Now copy the source and build the executable jar (skip tests during image build)
