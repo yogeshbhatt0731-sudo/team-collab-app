@@ -13,6 +13,7 @@ import com.teamcollab.workspaceservice.feature.exception.InvalidFeatureStatusTra
 import com.teamcollab.workspaceservice.feature.repository.FeatureRepository;
 import com.teamcollab.workspaceservice.project.entities.Project;
 import com.teamcollab.workspaceservice.project.exception.ProjectNotFoundException;
+import com.teamcollab.workspaceservice.project.repository.ProjectAccessRepository;
 import com.teamcollab.workspaceservice.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -57,7 +58,6 @@ public class FeatureServiceImpl implements FeatureService {
     @Override
     public ApiResponse createFeature(FeatureRequestDTO featureRequestDTO) {
 
-        // todo user role validation from the userContext
         Project project = projectRepository.findById(featureRequestDTO.getProjectId())
                 .orElseThrow(() -> new ProjectNotFoundException(
                         "Project with id "+ featureRequestDTO.getProjectId() + " does not exist"
@@ -100,8 +100,6 @@ public class FeatureServiceImpl implements FeatureService {
     @Override
     public ApiResponse updateFeatureStatus(Long featureId, FeatureStatusUpdateDTO featureStatusUpdateDTO) {
 
-        // todo user role validation from userContext
-
         Feature feature = this.assertExists(featureId);
 
         FeatureStatus current = feature.getFeatureStatus();
@@ -120,7 +118,6 @@ public class FeatureServiceImpl implements FeatureService {
 
     @Override
     public ApiResponse deleteFeature(Long featureId) {
-        // todo user admin validation
 
         Feature feature = this.assertExists(featureId);
 
