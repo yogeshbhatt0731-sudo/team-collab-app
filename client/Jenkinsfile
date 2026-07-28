@@ -17,6 +17,9 @@ pipeline {
         // Backend dev API the built bundle must point at.
         // workspace-service is published on the same server at port 8082.
         BACKEND_URL = "http://8.231.96.214:8082"
+
+        // auth-service is a separate backend published on the same server at port 8081.
+        AUTH_URL = "http://8.231.96.214:8081"
     }
 
     stages {
@@ -33,6 +36,7 @@ pipeline {
                     sh """
                     docker build \
                       --build-arg VITE_API_BASE_URL=${BACKEND_URL} \
+                      --build-arg VITE_AUTH_BASE_URL=${AUTH_URL} \
                       -t ${IMAGE_NAME}:${IMAGE_TAG} \
                       -t ${IMAGE_NAME}:develop-latest .
                     """
