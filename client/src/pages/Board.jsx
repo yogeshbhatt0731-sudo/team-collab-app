@@ -12,10 +12,10 @@ import FeatureForm from '../components/FeatureForm'
 import FeatureDetailsModal from '../components/FeatureDetailsModal'
 import { toast } from 'react-toastify'
 import { PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
-import { listTasks, listAssignedTasks, createTask, changeStatus, deleteTask, setTaskSprint, setTaskFeature } from "../services/taskService.js";
+import { listTasks, listAssignedTasks, createTask, changeStatus, deleteTask, setTaskSprint, setTaskFeature, assignTask } from "../services/taskService.js";
 import { listSprints, createSprint, updateSprint, updateSprintStatus, deleteSprint, getSprintDetails } from "../services/sprintService.js";
 import { listFeatures, createFeature, updateFeatureStatus, deleteFeature, getFeatureDetails } from "../services/featureService.js";
-import { getWorkspaceById } from "../services/workspaceService.js";
+import { getWorkspaceById, getWorkspaceMembers } from "../services/workspaceService.js";
 
 const SPRINT_STATUS_COLOR = { PLANNED: '#64748b', ACTIVE: '#16a34a', COMPLETED: '#4f46e5' }
 const SPRINT_STATUS_ORDER = ['ACTIVE', 'PLANNED', 'COMPLETED'] // display order for the grouped Sprints tab
@@ -34,14 +34,19 @@ function badge(text, color) {
 // data-taskid lets the board catch a click via delegation (see handlers below).
 // Factory so the card can badge a task's feature from the CURRENT (API-backed) features list.
 // canDelete gates the little trash control (owner on the project board; always on My Board).
-function makeCardTemplate(features, canDelete) {
+const initialsOf = (name = '') => name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || '?'
+
+function makeCardTemplate(features, canDelete, memberMap) {
   const findFeature = (featureId) => features.find((f) => f.id === featureId)
   return function cardTemplate(task) {
-    const assignees = (task.assignees || []).map((id) => ({
-      userId: id,
-      initials: String(id).slice(0, 2),
-      color: '#64748b',
-    }))
+    const assignees = (task.assignees || []).map((id) => {
+      const m = memberMap[id]
+      return {
+        userId: id,
+        initials: m ? initialsOf(m.name) : String(id).slice(0, 2),
+        color: m?.avatarColor || '#64748b',
+      }
+    })
     const feature = task.featureId ? findFeature(task.featureId) : null
     return (
       <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer', position: 'relative' }}>
@@ -100,6 +105,7 @@ function Board() {
   const location = useLocation()
 
   const [tasks, setTasks] = useState([])
+  const [members, setMembers] = useState([])
 
   const [sprints, setSprints] = useState([])
   const [features, setFeatures] = useState([])
@@ -146,10 +152,16 @@ function Board() {
     setFeatures(data || [])
   }
 
-  // Tasks always load (My Board vs Project Board is handled inside loadTasks itself);
-  // sprints/features only make sense once we're scoped to a project.
+  const loadMembers = async () => {
+    const wsId = workspaceId || localStorage.getItem('active_workspace_id')
+    if (!wsId) return
+    const data = await getWorkspaceMembers(wsId)
+    setMembers(data || [])
+  }
+
   useEffect(() => {
     loadTasks()
+    loadMembers()
     if (projectId) {
       loadSprints()
       loadFeatures()
@@ -178,8 +190,9 @@ function Board() {
   // My Board (no project): the list is ALREADY only my tasks (GET /task/assigned filters by me),
   // so no client-side assignee filter is needed — just show what came back.
   const myTasks = tasks
-  // Delete control: owner-gated on a project board; on My Board (personal) you always manage your own.
-  const cardTemplate = makeCardTemplate(features, projectId ? isOwner : true)
+  const memberMap = {}
+  members.forEach((m) => { memberMap[m.userId] = m })
+  const cardTemplate = makeCardTemplate(features, projectId ? isOwner : true, memberMap)
 
   /* ---------- click vs drag on the Kanban ---------- */
   const onPointerDownCapture = (e) => { down.current = { x: e.clientX, y: e.clientY } }
@@ -208,20 +221,22 @@ function Board() {
 
   /* ---------- task mutations (backend EXISTS -> real API + refetch) ---------- */
   const onCreate = async (values) => {
-    // TaskRequestDTO wants: title, description, taskPriority, taskType, dueDate, projectID (capital ID).
-    // New tasks land in the BACKLOG (no sprint) — the owner pulls them into a sprint later.
+    const { assigneeIds, ...rest } = values
     const payload = {
-      title: values.title,
-      description: values.description,
-      taskPriority: values.taskPriority,
-      taskType: values.taskType,
-      dueDate: values.dueDate || null,
-      projectID: Number(projectId),   // route param is a string; backend field is a Long
+      title: rest.title,
+      description: rest.description,
+      taskPriority: rest.taskPriority,
+      taskType: rest.taskType,
+      dueDate: rest.dueDate || null,
+      projectID: Number(projectId),
     }
-    const res = await createTask(payload)   // POST /task
+    const res = await createTask(payload)
     if (res) {
+      if (assigneeIds?.length) {
+        await Promise.all(assigneeIds.map((userId) => assignTask(res.id, userId)))
+      }
       toast.success('Task created')
-      await loadTasks()   // refetch so the new task shows up (server is source of truth)
+      await loadTasks()
     }
     setFormOpen(false)
   }
@@ -355,7 +370,7 @@ function Board() {
       <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--app-bg)', color: 'var(--text)' }}>
         <Sidebar />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <Header userName="Yogesh Bhatt" />
+          <Header userName={JSON.parse(localStorage.getItem('current_user') || '{}').name || 'User'} />
           <main style={{ flex: 1, padding: 24, minWidth: 0 }}>
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: '1.6rem' }}>My Board</h4>
@@ -389,7 +404,7 @@ function Board() {
       <Sidebar />
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Header userName="Yogesh Bhatt" />
+        <Header userName={JSON.parse(localStorage.getItem('current_user') || '{}').name || 'User'} />
 
         <main style={{ flex: 1, padding: 24, minWidth: 0 }}>
           {/* title + role toggle */}
@@ -704,7 +719,7 @@ function Board() {
       </div>
 
       {/* dialogs */}
-      <TaskForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={onCreate} sprints={sprints} features={features} />
+      <TaskForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={onCreate} sprints={sprints} features={features} members={members.map((m) => ({ value: m.userId, text: m.name }))} />
       <SprintForm open={sprintFormOpen} onClose={closeSprintForm} onSubmit={onSubmitSprintForm} submitting={creatingSprint} sprint={editingSprint} />
       <SprintDetailsModal open={sprintDetailsOpen} onClose={() => setSprintDetailsOpen(false)} sprint={sprintDetails} />
       <FeatureForm open={featureFormOpen} onClose={() => setFeatureFormOpen(false)} onSubmit={onCreateFeature} submitting={creatingFeature} />

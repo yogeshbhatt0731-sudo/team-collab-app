@@ -7,7 +7,7 @@ import { DropDownButtonComponent } from '@syncfusion/ej2-react-splitbuttons'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import Modal from '../components/Modal'
-import { getWorkspaces } from '../services/workspaceService'
+import { getWorkspaces, getWorkspaceMembers } from '../services/workspaceService'
 
 const ROLE_STYLE = {
   OWNER: { bg: '#fef3c7', fg: '#92400e' },
@@ -23,16 +23,12 @@ const ROLES = ['OWNER', 'MEMBER'].map((r) => ({ value: r, text: r }))
  *   invite: POST invite (email)
  *   role:   PATCH member role   ·   remove: DELETE member
  */
+const initialsOf = (name = '') => name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || '?'
+
 function Members() {
-  // Members belong to a workspace. Reached via /workspace/:workspaceId/members (scoped) or the
-  // bare /members sidebar link (workspaceId undefined -> mock/all).
   const { workspaceId } = useParams()
   const navigate = useNavigate()
-  const memberStorageKey = `workspace-members-${workspaceId || 'all'}`
-  const [members, setMembers] = useState(() => {
-    const storedMembers = localStorage.getItem(memberStorageKey)
-    return storedMembers ? JSON.parse(storedMembers) : []
-  })
+  const [members, setMembers] = useState([])
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState('')
@@ -45,25 +41,30 @@ function Members() {
   const [memberToAdd, setMemberToAdd] = useState(null)
   const [targetWorkspaceId, setTargetWorkspaceId] = useState('')
 
-  useEffect(() => {
-    if (workspaceId) return
-    async function loadWorkspaces() {
-      try {
-        setWorkspaces(await getWorkspaces())
-      } catch {
-        setWorkspaces([])
-      }
+  const loadMembers = async () => {
+    const wsId = workspaceId || localStorage.getItem('active_workspace_id')
+    if (!wsId) return
+    try {
+      const data = await getWorkspaceMembers(wsId)
+      setMembers((data || []).map((m) => ({
+        userId: m.userId,
+        name: m.name,
+        email: m.email,
+        initials: initialsOf(m.name),
+        color: m.avatarColor || '#475467',
+        role: m.role,
+      })))
+    } catch {
+      setMembers([])
     }
-    loadWorkspaces()
-  }, [workspaceId])
-
-  const updateMembers = (updater) => {
-    setMembers((currentMembers) => {
-      const nextMembers = typeof updater === 'function' ? updater(currentMembers) : updater
-      localStorage.setItem(memberStorageKey, JSON.stringify(nextMembers))
-      return nextMembers
-    })
   }
+
+  useEffect(() => {
+    loadMembers()
+    if (!workspaceId) {
+      getWorkspaces().then(setWorkspaces).catch(() => setWorkspaces([]))
+    }
+  }, [workspaceId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMemberMenu = (member, text) => {
     setSelectedMember(member)
@@ -71,6 +72,8 @@ function Members() {
     else if (text === 'Remove from Workspace') setRemoveOpen(true)
   }
 
+  // WIRE: invite flow via email — backend endpoint not built yet.
+  // For now: modal collects email, shows a placeholder message.
   const submitInvite = () => {
     const email = inviteEmail.trim().toLowerCase()
     if (!email || !email.includes('@')) {
@@ -81,44 +84,27 @@ function Members() {
       setInviteError('This user is already a workspace member.')
       return
     }
-
-    const name = email.split('@')[0].split(/[._-]/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
-    updateMembers((currentMembers) => [...currentMembers, {
-      userId: `mock-${Date.now()}`,
-      name: name || 'New member',
-      initials: (name || 'NM').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
-      color: '#475467',
-      role: 'MEMBER',
-      email,
-    }])
-    setInviteEmail('')
-    setInviteError('')
-    setInviteOpen(false)
+    // TODO: POST /workspaces/{workspaceId}/invite { email } → then loadMembers()
+    setInviteError('Invite flow not wired yet — add users directly in workspace_user table for testing.')
+    return
   }
 
   const addExistingMember = () => {
     if (!memberToAdd || !targetWorkspaceId) return
-    const targetKey = `workspace-members-${targetWorkspaceId}`
-    const targetMembers = JSON.parse(localStorage.getItem(targetKey) || '[]')
-    if (!targetMembers.some((member) => member.email === memberToAdd.email)) {
-      localStorage.setItem(targetKey, JSON.stringify([...targetMembers, { ...memberToAdd, role: 'MEMBER' }]))
-    }
+    // TODO: POST /workspaces/{targetWorkspaceId}/members { userId } → then loadMembers()
     setTargetWorkspaceId('')
     setMemberToAdd(null)
     setAddToWorkspaceOpen(false)
   }
 
-  // Mock: mutate local state. WIRE: call the API then refetch.
+  // TODO: PATCH /workspaces/{workspaceId}/members/{userId}/role { role } → then loadMembers()
   const submitRole = () => {
-    updateMembers((prev) => prev.map((m) => (m.userId === selectedMember.userId ? { ...m, role: newRole } : m)))
-    // WIRE: await changeRole(selectedMember.userId, newRole); await loadMembers()
     setRoleOpen(false)
     setSelectedMember(null)
   }
 
+  // TODO: DELETE /workspaces/{workspaceId}/members/{userId} → then loadMembers()
   const confirmRemove = () => {
-    updateMembers((prev) => prev.filter((m) => m.userId !== selectedMember.userId))
-    // WIRE: await removeMember(selectedMember.userId); await loadMembers()
     setRemoveOpen(false)
     setSelectedMember(null)
   }

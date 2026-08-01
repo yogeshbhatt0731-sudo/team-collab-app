@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    environment {
+        // ---- image ----
+        IMAGE_NAME = "yogesh177/team-collab-eureka-server"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+
+        // ---- inst2 (deploy server) ----
+        DEV_SERVER = "8.231.96.214"
+        DEV_USER   = "yogeshbhatt"
+
+        // ---- dev container settings on inst2 ----
+        APP_NAME   = "eureka-server-dev"
+        HOST_PORT  = "8761"
+        NETWORK    = "dev-net"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Build Image') {
+            steps {
+                dir('eureka-server') {
+                    sh """
+                    docker build \
+                      -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                      -t ${IMAGE_NAME}:develop-latest .
+                    """
+                }
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh """
+                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                docker push ${IMAGE_NAME}:develop-latest
+                """
+            }
+        }
+
+        stage('Deploy To Dev') {
+
+            steps {
+                sshagent(['deploy-server-key']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
+                        docker network create ${NETWORK} || true
+
+                        docker pull ${IMAGE_NAME}:develop-latest
+
+                        docker stop ${APP_NAME} || true
+                        docker rm   ${APP_NAME} || true
+
+                        docker run -d \
+                            --name ${APP_NAME} \
+                            --network ${NETWORK} \
+                            -p ${HOST_PORT}:8761 \
+                            --restart unless-stopped \
+                            ${IMAGE_NAME}:develop-latest
+                    '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always  { sh 'docker logout || true' }
+        success { echo "eureka-server ${BUILD_NUMBER} deployed to DEV (port ${HOST_PORT})." }
+        failure { echo "eureka-server ${BUILD_NUMBER} FAILED." }
+    }
+}

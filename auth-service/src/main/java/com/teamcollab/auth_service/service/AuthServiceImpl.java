@@ -1,9 +1,6 @@
 package com.teamcollab.auth_service.service;
 
-import com.teamcollab.auth_service.dto.ApiResponse;
-import com.teamcollab.auth_service.dto.LoginRequestDTO;
-import com.teamcollab.auth_service.dto.LoginResponseDTO;
-import com.teamcollab.auth_service.dto.RegisterRequestDTO;
+import com.teamcollab.auth_service.dto.*;
 import com.teamcollab.auth_service.entity.User;
 import com.teamcollab.auth_service.repository.UserRepository;
 import com.teamcollab.auth_service.security.CustomUserDetails;
@@ -16,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 
 
 @Transactional
@@ -71,5 +69,10 @@ public class AuthServiceImpl implements AuthService{
                 userDetails.getUsername(),
                 token
         );
+    }
+
+    @Override
+    public List<UserDetailsDTO> getUsersById(List<Long> ids) {
+        return userRepository.findAllByUserIds(ids);
     }
 }

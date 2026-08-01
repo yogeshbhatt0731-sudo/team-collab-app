@@ -19,4 +19,7 @@ public interface WorkspaceUserRepository extends JpaRepository<WorkspaceUser, Wo
     @Query("DELETE FROM WorkspaceUser wu WHERE wu.workspaceUserId.workspaceId = :w_id")
     void deleteAllByWorkspaceId(@Param("w_id") Long workspaceId);
 
+    @Query("SELECT wu FROM WorkspaceUser wu WHERE wu.workspaceUserId.workspaceId = :workspaceId")
+    List<WorkspaceUser> findByWorkspaceId(@Param("workspaceId") Long workspaceId);
+
 }

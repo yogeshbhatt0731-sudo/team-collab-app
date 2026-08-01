@@ -14,7 +14,7 @@ import {
   getComments, addComment, updateComment, deleteComment,
 } from '../services/taskService'
 import { getUsersByIds } from '../services/userService'
-import { getWorkspaceById } from '../services/workspaceService'
+import { getWorkspaceById, getWorkspaceMembers } from '../services/workspaceService'
 import {
   STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
 } from '../data/taskMock'
@@ -90,7 +90,7 @@ function TaskDetail() {
   }
 
   // First load: task + assignees + comments together (they don't need each other, so fire in parallel).
-  // Also resolve the user's workspace role for conditional UI gating.
+  // Also resolve the user's workspace role and load ALL workspace members for the assignee dropdown.
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -98,6 +98,15 @@ function TaskDetail() {
     if (wsId) {
       getWorkspaceById(wsId).then((ws) => {
         if (active && ws?.role) setRole(ws.role)
+      }).catch(() => {})
+
+      getWorkspaceMembers(wsId).then((members) => {
+        if (!active || !members) return
+        setUsers((prev) => {
+          const next = { ...prev }
+          members.forEach((m) => { next[m.userId] = { id: m.userId, name: m.name, email: m.email, avatarColor: m.avatarColor } })
+          return next
+        })
       }).catch(() => {})
     }
     Promise.all([loadTask(), loadAssignees(), loadComments()]).finally(() => {
@@ -107,7 +116,8 @@ function TaskDetail() {
   }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Whenever assignees or comments change, gather every userId they mention and make sure
-  // we have that person's profile. THIS is the "lift the name from Auth" step.
+  // we have that person's profile. Fallback in case workspace members didn't load
+  // or a comment comes from a user who left the workspace.
   useEffect(() => {
     const ids = [...new Set([...assignees.map((a) => a.userId), ...comments.map((c) => c.userId)])]
     if (ids.length) ensureUsers(ids)
@@ -149,10 +159,22 @@ function TaskDetail() {
 
   // ---------- actions: call the API, then REFETCH (server is the source of truth) ----------
 
-  // Save edits from TaskForm: PATCH /task/{id}, then reload to show the saved values.
   const onSaveEdit = async (values) => {
-    const result = await updateTask(taskId, values)
+    const { assigneeIds: newIds, ...taskValues } = values
+    const result = await updateTask(taskId, taskValues)
     if (result) {
+      if (newIds) {
+        const currentIds = assignees.map((a) => a.userId)
+        const toAdd = newIds.filter((id) => !currentIds.includes(id))
+        const toRemove = currentIds.filter((id) => !newIds.includes(id))
+        if (toAdd.length || toRemove.length) {
+          await Promise.all([
+            ...toAdd.map((userId) => assignTask(taskId, userId)),
+            ...toRemove.map((userId) => unassignTask(taskId, userId)),
+          ])
+          await loadAssignees()
+        }
+      }
       toast.success('Task updated')
       await loadTask()
     }
@@ -233,7 +255,7 @@ function TaskDetail() {
       <Sidebar />
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Header userName="Yogesh Bhatt" />
+        <Header userName={JSON.parse(localStorage.getItem('current_user') || '{}').name || 'User'} />
 
         <main style={{ flex: 1, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -345,6 +367,8 @@ function TaskDetail() {
         }}
         sprints={SPRINTS}
         features={FEATURES}
+        members={Object.values(users).filter((u) => u.id).map((u) => ({ value: u.id, text: u.name }))}
+        assigneeIds={assignees.map((a) => a.userId)}
       />
     </div>
   )

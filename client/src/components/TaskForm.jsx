@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { TextBoxComponent } from '@syncfusion/ej2-react-inputs'
-import { DropDownListComponent } from '@syncfusion/ej2-react-dropdowns'
+import { DropDownListComponent, MultiSelectComponent } from '@syncfusion/ej2-react-dropdowns'
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 import Modal from './Modal'
 
@@ -10,30 +10,16 @@ const TYPES = ['STORY', 'TASK', 'BUG'].map((v) => ({ value: v, text: v }))
 
 const EMPTY = { title: '', description: '', taskPriority: 'MEDIUM', taskType: 'TASK', dueDate: '', sprintId: null, featureId: null }
 
-/**
- * One modal for BOTH create and edit.
- *   - Omit `task`  -> "New Task"  (create)
- *   - Pass `task`  -> "Edit Task" (prefilled)
- *
- * Presentational: it only collects fields and calls onSubmit(values). The PAGE decides
- * what to do (mock now, API later):
- *   WIRE (create):  addTask({ ...values, projectID }) -> refetch
- *   WIRE (edit):    updateTask(task.id, values)        -> refetch
- * Status is intentionally NOT here — it moves through the board / status endpoint (the FSM).
- *
- * `sprints` / `features` are optional lists (id + name) the page passes in.
- * WIRE: fetch them per project; also add sprintId/featureId to TaskRequestDTO/TaskUpdateDTO on
- * the backend and set task.mySprint / task.myFeature, otherwise these two fields are ignored.
- */
-function TaskForm({ open, onClose, onSubmit, task, sprints = [], features = [] }) {
+function TaskForm({ open, onClose, onSubmit, task, sprints = [], features = [], members = [], assigneeIds: initialAssigneeIds = [] }) {
   const isEdit = Boolean(task)
   const [values, setValues] = useState(EMPTY)
   const [error, setError] = useState('')
+  const [assigneeIds, setAssigneeIds] = useState([])
 
-  // Reset / prefill whenever the dialog opens.
   useEffect(() => {
     if (!open) return
     setError('')
+    setAssigneeIds(initialAssigneeIds)
     setValues(
       task
         ? {
@@ -47,7 +33,7 @@ function TaskForm({ open, onClose, onSubmit, task, sprints = [], features = [] }
           }
         : EMPTY
     )
-  }, [open, task])
+  }, [open, task]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k, v) => setValues((prev) => ({ ...prev, [k]: v }))
 
@@ -62,6 +48,7 @@ function TaskForm({ open, onClose, onSubmit, task, sprints = [], features = [] }
       dueDate: values.dueDate || null,
       sprintId: values.sprintId || null,
       featureId: values.featureId || null,
+      assigneeIds,
     })
   }
 
@@ -132,6 +119,21 @@ function TaskForm({ open, onClose, onSubmit, task, sprints = [], features = [] }
             <DropDownListComponent dataSource={featureOptions} fields={{ text: 'text', value: 'value' }} value={values.featureId ?? ''} change={(e) => set('featureId', e.value || null)} />
           </label>
         </div>
+
+        {members.length > 0 && (
+          <label>
+            <span style={labelStyle}>Assignees (optional)</span>
+            <MultiSelectComponent
+              dataSource={members}
+              fields={{ text: 'text', value: 'value' }}
+              value={assigneeIds}
+              placeholder="Select assignees"
+              mode="Box"
+              change={(e) => setAssigneeIds(e.value || [])}
+              width="100%"
+            />
+          </label>
+        )}
       </div>
     </Modal>
   )

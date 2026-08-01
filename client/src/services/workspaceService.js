@@ -31,3 +31,8 @@ export async function deleteWorkspace(workspaceId) {
   const response = await api.delete(`/workspaces/${workspaceId}`)
   return response.data
 }
+
+export async function getWorkspaceMembers(workspaceId) {
+  const response = await api.get(`/workspaces/${workspaceId}/members`)
+  return response.data
+}

@@ -100,6 +100,11 @@ public class WorkspaceController {
         return ResponseEntity.ok(workspaceService.deleteWorkspace(userContext.getUserId(),workspaceId));
     }
 
+    @GetMapping("/{workspaceId}/members")
+    public ResponseEntity<?> getWorkspaceMembers(@PathVariable Long workspaceId) {
+        return ResponseEntity.ok(workspaceService.getWorkspaceMembers(workspaceId));
+    }
+
 //    @GetMapping("/search")
 //    public ResponseEntity<?> searchWorkspace(...)
 //
