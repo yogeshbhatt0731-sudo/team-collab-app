@@ -1,16 +1,12 @@
-import axios from "axios";
-import {config} from "./config.js"
 import {toast } from "react-toastify";
-
-// X-User-Id stub — stands in for the JWT-derived user until Auth Service issues real tokens.
-const headers = {'X-User-Id':100}
+import api from './api'
 
 // ===== Task CRUD =====
 
 // GET /task?projectId=123
 export async function listTasks(projectId) {
     try{
-        const response = await axios.get(config.BASE_URL+'/task',{headers,params:{projectId}})
+        const response = await api.get('/task', { params: { projectId } })
         return response.data
     }
     catch(err){
@@ -21,10 +17,9 @@ export async function listTasks(projectId) {
 }
 
 // GET /task/assigned -> tasks assigned to ME (the "My Board" view, across all projects).
-// No param: the backend reads the current user from the X-User-Id header.
 export async function listAssignedTasks() {
     try{
-        const response = await axios.get(config.BASE_URL+'/task/assigned',{headers})
+        const response = await api.get('/task/assigned')
         return response.data
     }
     catch(err){
@@ -37,7 +32,7 @@ export async function listAssignedTasks() {
 // GET /task/{task_id} -> TaskResponseDTO
 export async function getTask(taskId){
     try{
-        const response = await axios.get(config.BASE_URL+'/task/'+taskId,{headers})
+        const response = await api.get('/task/'+taskId)
         return response.data
     }
     catch(err){
@@ -50,7 +45,7 @@ export async function getTask(taskId){
 // POST /task, payload: TaskRequestDTO { title, description, taskPriority, taskType, dueDate, projectID }
 export async function createTask(payload){
     try{
-        const response = await axios.post(config.BASE_URL+'/task', payload, {headers})
+        const response = await api.post('/task', payload)
         return response.data
     }
     catch(err){
@@ -61,15 +56,12 @@ export async function createTask(payload){
 }
 
 // PATCH /task/{task_id}, payload: TaskUpdateDTO { title, description, taskPriority, taskType, dueDate }
-// Note: no status here (goes through changeStatus below) and no sprintId/featureId
-// (TaskUpdateDTO doesn't carry them yet).
 export async function updateTask(taskId, payload){
     try{
         const { title, description, taskPriority, taskType, dueDate } = payload
-        const response = await axios.patch(
-            config.BASE_URL+'/task/'+taskId,
-            { title, description, taskPriority, taskType, dueDate },
-            {headers}
+        const response = await api.patch(
+            '/task/'+taskId,
+            { title, description, taskPriority, taskType, dueDate }
         )
         return response.data
     }
@@ -81,20 +73,13 @@ export async function updateTask(taskId, payload){
 }
 
 // PATCH /task/{task_id}/status, payload: TaskStatusUpdateDTO { taskStatus }
-// Backend enforces the FSM (TaskStatus.canTransitionTo) and 422s on an illegal move.
-// Returns true/false so the page can toast success itself and refetch (snap back) on failure.
 export async function changeStatus(taskId, taskStatus){
     try{
-        await axios.patch(
-            config.BASE_URL+'/task/'+taskId+'/status',
-            { taskStatus },
-            {headers}
-        )
+        await api.patch('/task/'+taskId+'/status', { taskStatus })
         return true
     }
     catch(err){
         console.error('changeStatus failed:', err.message)
-        // Prefer the server's ApiResponse message; fall back to a friendly 422 line.
         const msg = err.response?.status === 422
             ? (err.response?.data?.message || "That move isn't allowed")
             : (err.response?.data?.message || 'Could not update status')
@@ -104,11 +89,9 @@ export async function changeStatus(taskId, taskStatus){
 }
 
 // DELETE /task/{task_id}
-// Server cascades the task's assignees + comments, then removes it.
-// Returns true/false so the caller can toast + refetch itself.
 export async function deleteTask(taskId){
     try{
-        await axios.delete(config.BASE_URL+'/task/'+taskId, {headers})
+        await api.delete('/task/'+taskId)
         return true
     }
     catch(err){
@@ -119,14 +102,9 @@ export async function deleteTask(taskId){
 }
 
 // PATCH /task/{task_id}/sprint, payload: TaskSprintUpdateDTO { sprintId }
-// Attach the task to a sprint; pass sprintId = null to pull it back to the backlog.
 export async function setTaskSprint(taskId, sprintId){
     try{
-        await axios.patch(
-            config.BASE_URL+'/task/'+taskId+'/sprint',
-            { sprintId },
-            {headers}
-        )
+        await api.patch('/task/'+taskId+'/sprint', { sprintId })
         return true
     }
     catch(err){
@@ -137,14 +115,9 @@ export async function setTaskSprint(taskId, sprintId){
 }
 
 // PATCH /task/{task_id}/feature, payload: TaskFeatureUpdateDTO { featureId }
-// Attach the task to a feature; pass featureId = null to detach it.
 export async function setTaskFeature(taskId, featureId){
     try{
-        await axios.patch(
-            config.BASE_URL+'/task/'+taskId+'/feature',
-            { featureId },
-            {headers}
-        )
+        await api.patch('/task/'+taskId+'/feature', { featureId })
         return true
     }
     catch(err){
@@ -159,7 +132,7 @@ export async function setTaskFeature(taskId, featureId){
 // GET /task/{task_id}/assignees -> List<TaskAssigneeResponseDTO> [{ userId, assignedAt }]
 export async function getAssignees(taskId){
     try{
-        const response = await axios.get(config.BASE_URL+'/task/'+taskId+'/assignees', {headers})
+        const response = await api.get('/task/'+taskId+'/assignees')
         return response.data
     }
     catch(err){
@@ -172,11 +145,7 @@ export async function getAssignees(taskId){
 // POST /task/{task_id}/assignees, payload: TaskAssigneeRequestDTO { userId }
 export async function assignTask(taskId, userId){
     try{
-        const response = await axios.post(
-            config.BASE_URL+'/task/'+taskId+'/assignees',
-            { userId },
-            {headers}
-        )
+        const response = await api.post('/task/'+taskId+'/assignees', { userId })
         return response.data
     }
     catch(err){
@@ -187,13 +156,9 @@ export async function assignTask(taskId, userId){
 }
 
 // DELETE /task/{task_id}/assignees, payload: TaskAssigneeRequestDTO { userId }
-// axios needs the body under `data` for DELETE requests.
 export async function unassignTask(taskId, userId){
     try{
-        await axios.delete(config.BASE_URL+'/task/'+taskId+'/assignees', {
-            headers,
-            data: { userId },
-        })
+        await api.delete('/task/'+taskId+'/assignees', { data: { userId } })
         return true
     }
     catch(err){
@@ -208,7 +173,7 @@ export async function unassignTask(taskId, userId){
 // GET /task/{task_id}/comments -> List<TaskCommentResponseDTO>
 export async function getComments(taskId){
     try{
-        const response = await axios.get(config.BASE_URL+'/task/'+taskId+'/comments', {headers})
+        const response = await api.get('/task/'+taskId+'/comments')
         return response.data
     }
     catch(err){
@@ -219,14 +184,9 @@ export async function getComments(taskId){
 }
 
 // POST /task/{task_id}/comments, payload: TaskCommentRequestDTO { content }
-// Server returns only an ApiResponse (no created comment) — caller should refetch getComments after.
 export async function addComment(taskId, content){
     try{
-        const response = await axios.post(
-            config.BASE_URL+'/task/'+taskId+'/comments',
-            { content },
-            {headers}
-        )
+        const response = await api.post('/task/'+taskId+'/comments', { content })
         return response.data
     }
     catch(err){
@@ -239,11 +199,7 @@ export async function addComment(taskId, content){
 // PATCH /task/{task_id}/comments/{comment_id}, payload: TaskCommentRequestDTO { content }
 export async function updateComment(taskId, commentId, content){
     try{
-        const response = await axios.patch(
-            config.BASE_URL+'/task/'+taskId+'/comments/'+commentId,
-            { content },
-            {headers}
-        )
+        const response = await api.patch('/task/'+taskId+'/comments/'+commentId, { content })
         return response.data
     }
     catch(err){
@@ -256,7 +212,7 @@ export async function updateComment(taskId, commentId, content){
 // DELETE /task/{task_id}/comments/{comment_id}
 export async function deleteComment(taskId, commentId){
     try{
-        await axios.delete(config.BASE_URL+'/task/'+taskId+'/comments/'+commentId, {headers})
+        await api.delete('/task/'+taskId+'/comments/'+commentId)
         return true
     }
     catch(err){

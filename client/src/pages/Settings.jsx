@@ -129,6 +129,7 @@ function Settings({ themeMode, onThemeModeChange }) {
   const handleConfirmDelete = () => {
     localStorage.removeItem('current_user')
     localStorage.removeItem('clove_access_token')
+    localStorage.removeItem('active_workspace_id')
     setOpenDeleteDialog(false)
     navigate('/login')
   }

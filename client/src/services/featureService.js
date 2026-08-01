@@ -1,8 +1,5 @@
-import axios from "axios";
-import { config } from "./config.js";
 import { toast } from "react-toastify";
-
-const headers = { 'X-User-Id': 100 }
+import api from './api'
 
 function errorMessage(err) {
     return err.response?.data?.message || err.message
@@ -12,7 +9,7 @@ function errorMessage(err) {
 
 export async function listFeatures(projectId) {
     try {
-        const response = await axios.get(config.BASE_URL + '/projects/' + projectId + '/feature', { headers })
+        const response = await api.get('/projects/' + projectId + '/feature')
         return response.data
     } catch (err) {
         toast.error('Could not load features: ' + errorMessage(err))
@@ -22,7 +19,7 @@ export async function listFeatures(projectId) {
 
 export async function getFeatureDetails(featureId) {
     try {
-        const response = await axios.get(config.BASE_URL + '/feature/' + featureId, { headers })
+        const response = await api.get('/feature/' + featureId)
         return response.data
     } catch (err) {
         toast.error('Could not load feature details: ' + errorMessage(err))
@@ -32,7 +29,7 @@ export async function getFeatureDetails(featureId) {
 
 export async function createFeature({ name, projectId, dueDate }) {
     try {
-        const response = await axios.post(config.BASE_URL + '/feature', { name, projectId, dueDate }, { headers })
+        const response = await api.post('/feature', { name, projectId, dueDate })
         toast.success(response.data?.message || 'Feature created successfully')
         return true
     } catch (err) {
@@ -43,7 +40,7 @@ export async function createFeature({ name, projectId, dueDate }) {
 
 export async function updateFeatureStatus(featureId, featureStatus) {
     try {
-        const response = await axios.patch(config.BASE_URL + '/feature/' + featureId + '/status', { featureStatus }, { headers })
+        const response = await api.patch('/feature/' + featureId + '/status', { featureStatus })
         toast.success(response.data?.message || 'Feature updated successfully')
         return true
     } catch (err) {
@@ -54,7 +51,7 @@ export async function updateFeatureStatus(featureId, featureStatus) {
 
 export async function deleteFeature(featureId) {
     try {
-        const response = await axios.delete(config.BASE_URL + '/feature/' + featureId, { headers })
+        const response = await api.delete('/feature/' + featureId)
         toast.success(response.data?.message || 'Feature deleted successfully')
         return true
     } catch (err) {

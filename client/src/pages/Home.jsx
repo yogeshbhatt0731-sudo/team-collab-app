@@ -9,9 +9,6 @@ import ProfileEditModal from '../components/ProfileEditModal'
 import Modal from '../components/Modal'
 import { createWorkspace, getWorkspaces } from '../services/workspaceService'
 import { getMyProjects, getTasksByProject } from '../services/projectService'
-import { MEMBERS } from '../data/taskMock'
-
-const USER_ID = 1
 const defaultUser = {
   id: '', name: 'User', firstName: 'User', lastName: '', email: '',
   phone: '', bio: '', department: '', location: '', role: '',
@@ -41,8 +38,8 @@ function Home() {
     setError('')
     try {
       const [workspaceData, projectData] = await Promise.all([
-        getWorkspaces(USER_ID),
-        getMyProjects(USER_ID),
+        getWorkspaces(),
+        getMyProjects(),
       ])
       const projectCountByWorkspace = projectData.reduce((counts, project) => {
         counts[project.workspaceId] = (counts[project.workspaceId] || 0) + 1
@@ -50,20 +47,12 @@ function Home() {
       }, {})
       const taskCounts = await Promise.all(projectData.map(async (project) => {
         try {
-          const tasks = await getTasksByProject(project.projectId, USER_ID)
+          const tasks = await getTasksByProject(project.projectId)
           return tasks.length
         } catch {
           return 0
         }
       }))
-      const workspaceMembers = workspaceData.flatMap((workspace) => {
-        try {
-          return JSON.parse(localStorage.getItem(`workspace-members-${workspace.workspace_id}`)) || MEMBERS
-        } catch {
-          return MEMBERS
-        }
-      })
-
       setWorkspaces(workspaceData.map((workspace) => ({
         id: workspace.workspace_id,
         name: workspace.name,
@@ -72,7 +61,7 @@ function Home() {
       })))
       setProjects(projectData)
       setTaskCount(taskCounts.reduce((total, count) => total + count, 0))
-      setMemberCount(new Set(workspaceMembers.map((member) => member.email || member.userId)).size)
+      setMemberCount(new Set(workspaceData.map((w) => w.user_id)).size)
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Could not load your dashboard data.')
     } finally {
@@ -110,7 +99,7 @@ function Home() {
     }
     try {
       setCreateError('')
-      await createWorkspace(name, USER_ID)
+      await createWorkspace(name)
       await loadDashboard()
       setWorkspaceName('')
       setIsCreateDialogOpen(false)

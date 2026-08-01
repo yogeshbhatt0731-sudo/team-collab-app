@@ -51,7 +51,7 @@ public class WorkspaceController {
     @GetMapping("/{workspaceId}")
     public ResponseEntity<?> getWorkspace(@PathVariable Long workspaceId){
         return ResponseEntity.ok(workspaceService
-                        .getWorkspace(workspaceId));
+                        .getWorkspaceDetail(userContext.getUserId(), workspaceId));
     }
 
 

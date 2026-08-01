@@ -40,4 +40,21 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, Long> {
     """)
     List<WorkspaceDetailRespDto> findAllWorkspace(@Param("userId") Long userId);
 
+    @Query("""
+    SELECT new com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto(
+        wu.workspaceUserId.userId,
+        w.id,
+        w.createdAt,
+        w.updatedAt,
+        w.name,
+        wu.role
+    )
+    FROM Workspace w
+    JOIN WorkspaceUser wu
+        ON wu.workspaceUserId.workspaceId = w.id
+    WHERE w.id = :workspaceId
+      AND wu.workspaceUserId.userId = :userId
+    """)
+    Optional<WorkspaceDetailRespDto> findWorkspaceDetail(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
+
 }

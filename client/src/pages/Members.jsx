@@ -7,7 +7,6 @@ import { DropDownButtonComponent } from '@syncfusion/ej2-react-splitbuttons'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import Modal from '../components/Modal'
-import { MEMBERS } from '../data/taskMock'
 import { getWorkspaces } from '../services/workspaceService'
 
 const ROLE_STYLE = {
@@ -16,9 +15,7 @@ const ROLE_STYLE = {
   QA: { bg: '#ede9fe', fg: '#6d28d9' },
 }
 
-// The backend Role enum is OWNER / MEMBER; DEVELOPER / QA are legacy mock labels kept so
-// existing rows prefill correctly. WIRE: use the real Role values your API returns.
-const ROLES = ['OWNER', 'MEMBER', 'DEVELOPER', 'QA'].map((r) => ({ value: r, text: r }))
+const ROLES = ['OWNER', 'MEMBER'].map((r) => ({ value: r, text: r }))
 
 /**
  * Members page template. Mock list; WIRE to your workspace members endpoint.
@@ -34,7 +31,7 @@ function Members() {
   const memberStorageKey = `workspace-members-${workspaceId || 'all'}`
   const [members, setMembers] = useState(() => {
     const storedMembers = localStorage.getItem(memberStorageKey)
-    return storedMembers ? JSON.parse(storedMembers) : MEMBERS
+    return storedMembers ? JSON.parse(storedMembers) : []
   })
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -52,7 +49,7 @@ function Members() {
     if (workspaceId) return
     async function loadWorkspaces() {
       try {
-        setWorkspaces(await getWorkspaces(1))
+        setWorkspaces(await getWorkspaces())
       } catch {
         setWorkspaces([])
       }
@@ -102,7 +99,7 @@ function Members() {
   const addExistingMember = () => {
     if (!memberToAdd || !targetWorkspaceId) return
     const targetKey = `workspace-members-${targetWorkspaceId}`
-    const targetMembers = JSON.parse(localStorage.getItem(targetKey) || JSON.stringify(MEMBERS))
+    const targetMembers = JSON.parse(localStorage.getItem(targetKey) || '[]')
     if (!targetMembers.some((member) => member.email === memberToAdd.email)) {
       localStorage.setItem(targetKey, JSON.stringify([...targetMembers, { ...memberToAdd, role: 'MEMBER' }]))
     }
@@ -131,7 +128,7 @@ function Members() {
       <Sidebar />
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Header userName="Yogesh Bhatt" />
+        <Header userName={JSON.parse(localStorage.getItem('current_user') || '{}').name || 'User'} />
 
         <main style={{ flex: 1, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>

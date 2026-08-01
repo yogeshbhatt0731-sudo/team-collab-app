@@ -1,5 +1,5 @@
 import {useState, useRef, useEffect} from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { KanbanComponent, ColumnsDirective, ColumnDirective } from '@syncfusion/ej2-react-kanban'
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons'
 import { DropDownListComponent } from '@syncfusion/ej2-react-dropdowns'
@@ -11,10 +11,11 @@ import SprintDetailsModal from '../components/SprintDetailsModal'
 import FeatureForm from '../components/FeatureForm'
 import FeatureDetailsModal from '../components/FeatureDetailsModal'
 import { toast } from 'react-toastify'
-import { memberById, PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
+import { PRIORITY_COLOR, TYPE_COLOR, STATUS_LABEL } from '../data/taskMock'
 import { listTasks, listAssignedTasks, createTask, changeStatus, deleteTask, setTaskSprint, setTaskFeature } from "../services/taskService.js";
 import { listSprints, createSprint, updateSprint, updateSprintStatus, deleteSprint, getSprintDetails } from "../services/sprintService.js";
 import { listFeatures, createFeature, updateFeatureStatus, deleteFeature, getFeatureDetails } from "../services/featureService.js";
+import { getWorkspaceById } from "../services/workspaceService.js";
 
 const SPRINT_STATUS_COLOR = { PLANNED: '#64748b', ACTIVE: '#16a34a', COMPLETED: '#4f46e5' }
 const SPRINT_STATUS_ORDER = ['ACTIVE', 'PLANNED', 'COMPLETED'] // display order for the grouped Sprints tab
@@ -36,7 +37,11 @@ function badge(text, color) {
 function makeCardTemplate(features, canDelete) {
   const findFeature = (featureId) => features.find((f) => f.id === featureId)
   return function cardTemplate(task) {
-    const assignees = (task.assignees || []).map(memberById).filter(Boolean)
+    const assignees = (task.assignees || []).map((id) => ({
+      userId: id,
+      initials: String(id).slice(0, 2),
+      color: '#64748b',
+    }))
     const feature = task.featureId ? findFeature(task.featureId) : null
     return (
       <div data-taskid={task.id} style={{ padding: 12, cursor: 'pointer', position: 'relative' }}>
@@ -90,15 +95,15 @@ function featurePill(status) {
 
 
 function Board() {
-  const { projectId } = useParams()
-  console.log("ProjectId: ",projectId)
+  const { workspaceId, projectId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [tasks, setTasks] = useState([])
 
   const [sprints, setSprints] = useState([])
   const [features, setFeatures] = useState([])
-  const [role, setRole] = useState('OWNER') // DEMO toggle. WIRE: workspace_user.role for CURRENT_USER_ID
+  const [role, setRole] = useState(location.state?.role || 'MEMBER')
   const [tab, setTab] = useState('sprint')  // 'sprint' | 'backlog' | 'sprints' | 'features'
   const [formOpen, setFormOpen] = useState(false)
   const [sprintFormOpen, setSprintFormOpen] = useState(false)
@@ -148,6 +153,11 @@ function Board() {
     if (projectId) {
       loadSprints()
       loadFeatures()
+    }
+    if (workspaceId && !location.state?.role) {
+      getWorkspaceById(workspaceId).then((ws) => {
+        if (ws?.role) setRole(ws.role)
+      }).catch(() => {})
     }
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -388,12 +398,9 @@ function Board() {
               <h4 style={{ fontSize: '1.6rem' }}>Project Board <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>project #{projectId}</span></h4>
               <p className="muted" style={{ fontSize: 13 }}>Sprint board, backlog, sprints and features. Owner grooms the backlog and runs sprints; members work the active sprint.</p>
             </div>
-            {/* DEMO role toggle — WIRE: real role from workspace_user.role */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="muted" style={{ fontSize: 12 }}>View as (demo):</span>
-              <ButtonComponent cssClass={isOwner ? 'e-primary' : 'e-outline'} onClick={() => setRole('OWNER')}>Owner</ButtonComponent>
-              <ButtonComponent cssClass={!isOwner ? 'e-primary' : 'e-outline'} onClick={() => setRole('MEMBER')}>Member</ButtonComponent>
-            </div>
+            <span style={{ display: 'inline-block', padding: '4px 9px', borderRadius: 999, background: isOwner ? '#ede9fe' : '#f2f4f7', color: isOwner ? '#5b2ee8' : '#475467', fontWeight: 750, fontSize: 11, letterSpacing: '.25px' }}>
+              {role}
+            </span>
           </div>
 
           {/* tabs */}

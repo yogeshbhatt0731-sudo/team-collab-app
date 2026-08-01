@@ -17,6 +17,8 @@ public interface WorkspaceService {
 
 	public Workspace getWorkspace(Long workspaceId);
 
+	public WorkspaceDetailRespDto getWorkspaceDetail(Long userId, Long workspaceId);
+
 	public List<WorkspaceDetailRespDto> getAllWorkspace(Long userId);
 
 	public ApiResponse updateWorkspace(Long workspaceId, WorkspaceRequestDto workspaceRequestDto);
