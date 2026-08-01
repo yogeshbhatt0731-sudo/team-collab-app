@@ -1,66 +1,33 @@
-import axios from 'axios'
-import { API_BASE_URL } from './config'
-
+import api from './api'
 
 // ===== Project endpoints =====
 
-
-
-//Get Headers for userId
-function userHeaders(userId) {
-  return { 'X-User-Id': 100 }
-}
-
-
-//GET /projects/{project_id} -> ProjectResponseDTO
-export async function getProjectById(projectId, userId) {
-  const response = await axios.get(`${API_BASE_URL}/projects/${projectId}`, {
-    headers: userHeaders(userId),
-  })
-  return response.data
-} 
-
-//GET /projects -> List<ProjectResponseDTO>
-export async function getMyProjects(userId) {
-  const response = await axios.get(`${API_BASE_URL}/projects`, {
-    headers: userHeaders(userId),
-  })
+export async function getProjectById(projectId) {
+  const response = await api.get(`/projects/${projectId}`)
   return response.data
 }
 
-//POST /workspaces/{workspace_id}/projects, payload: ProjectRequestDTO { name }
-export async function createProject(workspaceId, name, userId) {
-  const response = await axios.post(
-    `${API_BASE_URL}/workspaces/${workspaceId}/projects`,
-    { name },
-    { headers: userHeaders(userId) },
-  )
+export async function getMyProjects() {
+  const response = await api.get('/projects')
   return response.data
 }
 
-//PUT /projects/{project_id}, payload: ProjectRequestDTO { name }
-export async function updateProject(projectId, name, userId) {
-  const response = await axios.put(
-    `${API_BASE_URL}/projects/${projectId}`,
-    { name },
-    { headers: userHeaders(userId) },
-  )
+export async function createProject(workspaceId, name) {
+  const response = await api.post(`/workspaces/${workspaceId}/projects`, { name })
   return response.data
 }
 
-//DELETE /projects/{project_id}
-export async function deleteProject(projectId, userId) {
-  const response = await axios.delete(`${API_BASE_URL}/projects/${projectId}`, {
-    headers: userHeaders(userId),
-  })
+export async function updateProject(projectId, name) {
+  const response = await api.put(`/projects/${projectId}`, { name })
   return response.data
 }
 
-//GET /projects/{project_id}/tasks -> List<TaskResponseDTO>
-export async function getTasksByProject(projectId, userId) {
-  const response = await axios.get(`${API_BASE_URL}/task`, {
-    headers: userHeaders(userId),
-    params: { projectId },
-  })
+export async function deleteProject(projectId) {
+  const response = await api.delete(`/projects/${projectId}`)
+  return response.data
+}
+
+export async function getTasksByProject(projectId) {
+  const response = await api.get('/task', { params: { projectId } })
   return response.data
 }

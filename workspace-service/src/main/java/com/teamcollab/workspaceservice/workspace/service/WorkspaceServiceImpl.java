@@ -53,8 +53,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public Workspace getWorkspace(Long workspaceId) {
-        //find workspace by id
-        return workspaceRepository.findById(workspaceId).orElseThrow(() -> new WorkspaceNotFoundException("Worksapce not found for this is"));
+        return workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new WorkspaceNotFoundException("Workspace not found"));
+    }
+
+    @Override
+    public WorkspaceDetailRespDto getWorkspaceDetail(Long userId, Long workspaceId) {
+        return workspaceRepository.findWorkspaceDetail(workspaceId, userId)
+                .orElseThrow(() -> new WorkspaceNotFoundException("Workspace not found or user is not a member"));
     }
 
 

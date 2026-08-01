@@ -1,8 +1,5 @@
-import axios from "axios";
-import { config } from "./config.js";
 import { toast } from "react-toastify";
-
-const headers = { 'X-User-Id': 100 }
+import api from './api'
 
 function errorMessage(err) {
     return err.response?.data?.message || err.message
@@ -12,7 +9,7 @@ function errorMessage(err) {
 
 export async function listSprints(projectId) {
     try {
-        const response = await axios.get(config.BASE_URL + '/projects/' + projectId + '/sprints', { headers })
+        const response = await api.get('/projects/' + projectId + '/sprints')
         return response.data
     } catch (err) {
         toast.error('Could not load sprints: ' + errorMessage(err))
@@ -22,7 +19,7 @@ export async function listSprints(projectId) {
 
 export async function getSprintDetails(sprintId) {
     try {
-        const response = await axios.get(config.BASE_URL + '/sprints/' + sprintId, { headers })
+        const response = await api.get('/sprints/' + sprintId)
         return response.data
     } catch (err) {
         toast.error('Could not load sprint details: ' + errorMessage(err))
@@ -32,7 +29,7 @@ export async function getSprintDetails(sprintId) {
 
 export async function createSprint({ name, goal, projectId }) {
     try {
-        const response = await axios.post(config.BASE_URL + '/sprints', { name, goal, projectId }, { headers })
+        const response = await api.post('/sprints', { name, goal, projectId })
         toast.success(response.data?.message || 'Sprint created successfully')
         return true
     } catch (err) {
@@ -43,7 +40,7 @@ export async function createSprint({ name, goal, projectId }) {
 
 export async function updateSprintStatus(sprintId, sprintStatus) {
     try {
-        const response = await axios.patch(config.BASE_URL + '/sprints/' + sprintId + '/status', { sprintStatus }, { headers })
+        const response = await api.patch('/sprints/' + sprintId + '/status', { sprintStatus })
         toast.success(response.data?.message || 'Sprint updated successfully')
         return true
     } catch (err) {
@@ -54,7 +51,7 @@ export async function updateSprintStatus(sprintId, sprintStatus) {
 
 export async function updateSprint(sprintId, { name, goal }) {
     try {
-        const response = await axios.patch(config.BASE_URL + '/sprints/' + sprintId, { name, goal }, { headers })
+        const response = await api.patch('/sprints/' + sprintId, { name, goal })
         toast.success(response.data?.message || 'Sprint updated successfully')
         return true
     } catch (err) {
@@ -65,7 +62,7 @@ export async function updateSprint(sprintId, { name, goal }) {
 
 export async function deleteSprint(sprintId) {
     try {
-        const response = await axios.delete(config.BASE_URL + '/sprints/' + sprintId, { headers })
+        const response = await api.delete('/sprints/' + sprintId)
         toast.success(response.data?.message || 'Sprint deleted successfully')
         return true
     } catch (err) {

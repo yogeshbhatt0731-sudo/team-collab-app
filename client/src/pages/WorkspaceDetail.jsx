@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { TextBoxComponent } from "@syncfusion/ej2-react-inputs";
 import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import Header from "../components/Header";
@@ -73,10 +73,8 @@ function InfoCard({ label, value, detail, color }) {
 function WorkspaceDetail() {
     const { workspaceId } = useParams();
     const navigate = useNavigate();
-    const location = useLocation();
-    const userId = location.state?.userId || 1;
-    const role = location.state?.role || "MEMBER";
     const [workspace, setWorkspace] = useState(null);
+    const role = workspace?.role || "MEMBER";
     const [projects, setProjects] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(true);
@@ -92,15 +90,16 @@ function WorkspaceDetail() {
     });
 
     const refreshProjects = async () => {
-        setProjects(await getProjectsByWorkspace(workspaceId, userId));
+        setProjects(await getProjectsByWorkspace(workspaceId));
     };
 
     useEffect(() => {
+        localStorage.setItem('active_workspace_id', workspaceId)
         async function loadWorkspace() {
             try {
                 const [workspaceData, projectData] = await Promise.all([
-                    getWorkspaceById(workspaceId, userId),
-                    getProjectsByWorkspace(workspaceId, userId),
+                    getWorkspaceById(workspaceId),
+                    getProjectsByWorkspace(workspaceId),
                 ]);
                 setWorkspace(workspaceData);
                 setProjects(projectData);
@@ -114,12 +113,12 @@ function WorkspaceDetail() {
             }
         }
         loadWorkspace();
-    }, [workspaceId, userId]);
+    }, [workspaceId]);
 
     const visibleProjects = projects.filter((project) =>
         project.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-    const canManageProject = (project) => project.createdBy === userId;
+    const canManageProject = (project) => project.createdBy === currentUser.id;
 
     const openCreateDialog = () => {
         setSelectedProject(null);
@@ -143,8 +142,8 @@ function WorkspaceDetail() {
         }
         try {
             if (selectedProject)
-                await updateProject(selectedProject.id, name, userId);
-            else await createProject(workspaceId, name, userId);
+                await updateProject(selectedProject.id, name);
+            else await createProject(workspaceId, name);
             await refreshProjects();
             setIsProjectDialogOpen(false);
         } catch (requestError) {
@@ -158,7 +157,7 @@ function WorkspaceDetail() {
     const removeProject = async () => {
         if (!selectedProject) return;
         try {
-            await deleteProject(selectedProject.id, userId);
+            await deleteProject(selectedProject.id);
             await refreshProjects();
             setIsDeleteDialogOpen(false);
             setSelectedProject(null);
@@ -523,7 +522,6 @@ function WorkspaceDetail() {
                                                             `/workspace/${workspaceId}/project/${project.id}`,
                                                             {
                                                                 state: {
-                                                                    userId,
                                                                     role,
                                                                     project,
                                                                 },

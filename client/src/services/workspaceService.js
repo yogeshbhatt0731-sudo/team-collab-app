@@ -1,62 +1,33 @@
-import axios from 'axios'
-import { API_BASE_URL } from './config'
+import api from './api'
 
 // ===== Workspace endpoints =====
 
-//Get Headers for userId
-function userHeaders(userId) {
-  return { 'X-User-Id': 100 }
-}
-
-//GET /workspaces -> List<WorkspaceResponseDTO>
-export async function getWorkspaces(userId) {
-  const response = await axios.get(`${API_BASE_URL}/workspaces`, {
-    headers: userHeaders(userId),
-  })
+export async function getWorkspaces() {
+  const response = await api.get('/workspaces')
   return response.data
 }
 
-//GET /workspaces/{workspace_id} -> WorkspaceResponseDTO
-export async function getWorkspaceById(workspaceId, userId) {
-  const response = await axios.get(`${API_BASE_URL}/workspaces/${workspaceId}`, {
-    headers: userHeaders(userId),
-  })
+export async function getWorkspaceById(workspaceId) {
+  const response = await api.get(`/workspaces/${workspaceId}`)
   return response.data
 }
 
-//GET /workspaces/{workspace_id}/projects -> List<ProjectResponseDTO>
-export async function getProjectsByWorkspace(workspaceId, userId) {
-  const response = await axios.get(`${API_BASE_URL}/workspaces/${workspaceId}/projects`, {
-    headers: userHeaders(userId),
-  })
+export async function getProjectsByWorkspace(workspaceId) {
+  const response = await api.get(`/workspaces/${workspaceId}/projects`)
   return response.data
 }
 
-
-//POST /workspaces, payload: WorkspaceRequestDTO { name }
-export async function createWorkspace(name, userId) {
-  const response = await axios.post(
-    `${API_BASE_URL}/workspaces`,
-    { name },
-    { headers: userHeaders(userId) },
-  )
+export async function createWorkspace(name) {
+  const response = await api.post('/workspaces', { name })
   return response.data
 }
 
-//PUT /workspaces/{workspace_id}, payload: WorkspaceRequestDTO { name }
-export async function updateWorkspace(workspaceId, name, userId) {
-  const response = await axios.put(
-    `${API_BASE_URL}/workspaces/${workspaceId}`,
-    { name },
-    { headers: userHeaders(userId) },
-  )
+export async function updateWorkspace(workspaceId, name) {
+  const response = await api.put(`/workspaces/${workspaceId}`, { name })
   return response.data
 }
 
-//DELETE /workspaces/{workspace_id}
-export async function deleteWorkspace(workspaceId, userId) {
-  const response = await axios.delete(`${API_BASE_URL}/workspaces/${workspaceId}`, {
-    headers: userHeaders(userId),
-  })
+export async function deleteWorkspace(workspaceId) {
+  const response = await api.delete(`/workspaces/${workspaceId}`)
   return response.data
 }

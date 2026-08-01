@@ -14,12 +14,10 @@ import {
   getComments, addComment, updateComment, deleteComment,
 } from '../services/taskService'
 import { getUsersByIds } from '../services/userService'
+import { getWorkspaceById } from '../services/workspaceService'
 import {
-  memberById, MEMBERS, STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
+  STATUSES, STATUS_LABEL, PRIORITY_COLOR, TYPE_COLOR, CAN_TRANSITION, SPRINTS, FEATURES,
 } from '../data/taskMock'
-
-// We are user 100 (same value as the X-User-Id header the API sends). Swap for the JWT user later.
-const CURRENT_USER_ID = 100
 
 // tiny helper: "Rohit Kumar" -> "RK"  (used for the little round avatar badge)
 const initialsOf = (name = '') => name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || '?'
@@ -28,14 +26,20 @@ const initialsOf = (name = '') => name.split(' ').map((w) => w[0]).filter(Boolea
 const statusOptions = STATUSES.map((s) => ({ value: s, text: STATUS_LABEL[s] }))
 
 function TaskDetail() {
-  const { taskId } = useParams()   // /task/:taskId  -> pull the id out of the URL
+  const { taskId } = useParams()
   const navigate = useNavigate()
+  const currentUser = JSON.parse(localStorage.getItem('current_user') || '{}')
+  const currentUserId = currentUser.id
 
   const [task, setTask] = useState(null)         // the one task (TaskResponseDTO)
   const [status, setStatus] = useState('')       // current status, kept on its own so the dropdown feels snappy
   const [assignees, setAssignees] = useState([]) // RAW list from the API: [{ userId, assignedAt }] — ids only, no names
   const [comments, setComments] = useState([])   // comments mapped into the shape CommentList wants
-  const [users, setUsers] = useState({})         // id -> profile { id, name, ... } lifted from the AUTH service
+  const [users, setUsers] = useState(() => {
+    if (!currentUserId) return {}
+    return { [currentUserId]: { id: currentUserId, name: currentUser.name || 'You' } }
+  })
+  const [role, setRole] = useState('MEMBER')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -86,13 +90,20 @@ function TaskDetail() {
   }
 
   // First load: task + assignees + comments together (they don't need each other, so fire in parallel).
+  // Also resolve the user's workspace role for conditional UI gating.
   useEffect(() => {
     let active = true
     setLoading(true)
+    const wsId = localStorage.getItem('active_workspace_id')
+    if (wsId) {
+      getWorkspaceById(wsId).then((ws) => {
+        if (active && ws?.role) setRole(ws.role)
+      }).catch(() => {})
+    }
     Promise.all([loadTask(), loadAssignees(), loadComments()]).finally(() => {
       if (active) setLoading(false)
     })
-    return () => { active = false }   // ignore results if we navigated away mid-fetch
+    return () => { active = false }
   }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Whenever assignees or comments change, gather every userId they mention and make sure
@@ -102,14 +113,13 @@ function TaskDetail() {
     if (ids.length) ensureUsers(ids)
   }, [assignees, comments]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Given a userId, give back { name, initials, color } to show on screen.
-  // Try 3 sources in order:  (1) real Auth profile  (2) local MEMBERS mock  (3) a plain "User 101".
   const resolveUser = (userId) => {
+    if (userId === currentUserId) {
+      return { userId, name: currentUser.name || 'You', initials: initialsOf(currentUser.name), color: '#2563eb' }
+    }
     const u = users[userId]
     if (u) return { userId, name: u.name, initials: initialsOf(u.name), color: u.avatarColor || '#2563eb' }
-    const m = memberById(userId)   // fallback while the Auth service isn't built yet
-    if (m) return { userId, name: m.name, initials: m.initials, color: m.color }
-    return { userId, name: `User ${userId}`, initials: initialsOf(String(userId)), color: '#64748b' }  // last resort
+    return { userId, name: `User ${userId}`, initials: initialsOf(String(userId)), color: '#64748b' }
   }
 
   // ---------- render guards ----------
@@ -134,6 +144,8 @@ function TaskDetail() {
       </div>
     )
   }
+
+  const isOwner = role === 'OWNER'
 
   // ---------- actions: call the API, then REFETCH (server is the source of truth) ----------
 
@@ -166,10 +178,10 @@ function TaskDetail() {
     }
   }
 
-  // who's already assigned -> so we don't offer them again in the "+ Add assignee" list
   const assignedIds = assignees.map((a) => a.userId)
-  // WIRE: candidates should really come from the project's members list; using MEMBERS mock for now.
-  const candidates = MEMBERS.filter((m) => !assignedIds.includes(m.userId)).map((m) => ({ value: m.userId, text: m.name }))
+  const candidates = Object.values(users)
+    .filter((u) => !assignedIds.includes(u.id))
+    .map((u) => ({ value: u.id, text: u.name }))
 
   const handleAddAssignee = async (userId) => {
     if (!userId) return
@@ -226,7 +238,7 @@ function TaskDetail() {
         <main style={{ flex: 1, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <ButtonComponent cssClass="e-flat" onClick={() => navigate(-1)}>← Back</ButtonComponent>
-            <ButtonComponent cssClass="e-outline" onClick={() => setEditOpen(true)}>Edit Task</ButtonComponent>
+            {isOwner && <ButtonComponent cssClass="e-outline" onClick={() => setEditOpen(true)}>Edit Task</ButtonComponent>}
           </div>
 
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -256,7 +268,7 @@ function TaskDetail() {
                     resolveUser turns each comment's userId into a name (Auth first, mock fallback). */}
                 <CommentList
                   comments={comments}
-                  currentUserId={CURRENT_USER_ID}
+                  currentUserId={currentUserId}
                   resolveUser={resolveUser}
                   onAdd={handleAddComment}
                   onEdit={handleEditComment}
@@ -287,12 +299,12 @@ function TaskDetail() {
                       <span key={a.userId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f1f5f9', borderRadius: 999, padding: '3px 6px 3px 3px' }}>
                         <span className="avatar" style={{ width: 22, height: 22, fontSize: 10, background: m.color }}>{m.initials}</span>
                         <span style={{ fontSize: 12 }}>{m.name}</span>
-                        <ButtonComponent cssClass="e-flat" style={{ minWidth: 0, padding: '0 6px', lineHeight: 1 }} onClick={() => handleRemoveAssignee(a.userId)}>×</ButtonComponent>
+                        {isOwner && <ButtonComponent cssClass="e-flat" style={{ minWidth: 0, padding: '0 6px', lineHeight: 1 }} onClick={() => handleRemoveAssignee(a.userId)}>×</ButtonComponent>}
                       </span>
                     )
                   })}
                 </div>
-                {candidates.length > 0 && (
+                {isOwner && candidates.length > 0 && (
                   <div style={{ marginTop: 10 }}>
                     <DropDownListComponent
                       dataSource={candidates}

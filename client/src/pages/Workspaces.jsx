@@ -9,7 +9,6 @@ import Modal from '../components/Modal'
 import { createWorkspace, deleteWorkspace, getWorkspaces, updateWorkspace } from '../services/workspaceService'
 
 const defaultUser = { name: 'User' }
-const USER_ID = 1
 const cardColors = ['#7c3aed', '#0fbe82', '#f59e0b', '#2563eb', '#db2777', '#9333ea']
 
 function Workspaces() {
@@ -35,7 +34,7 @@ function Workspaces() {
 
   const loadWorkspaces = async () => {
     try {
-      setWorkspaces(await getWorkspaces(USER_ID))
+      setWorkspaces(await getWorkspaces())
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Could not load workspaces.')
     } finally {
@@ -48,6 +47,7 @@ function Workspaces() {
       navigate('/login')
       return
     }
+    localStorage.removeItem('active_workspace_id')
     async function initializeWorkspaces() {
       await loadWorkspaces()
     }
@@ -63,7 +63,7 @@ function Workspaces() {
     }
 
     try {
-      await createWorkspace(name, USER_ID)
+      await createWorkspace(name)
       await loadWorkspaces()
       setWorkspaceName('')
       setIsCreateDialogOpen(false)
@@ -75,7 +75,7 @@ function Workspaces() {
   const handleDeleteWorkspace = async () => {
     if (!selectedWorkspace) return
     try {
-      await deleteWorkspace(selectedWorkspace.workspace_id, USER_ID)
+      await deleteWorkspace(selectedWorkspace.workspace_id)
       setWorkspaces((items) => items.filter((workspace) => workspace.workspace_id !== selectedWorkspace.workspace_id))
       setSelectedWorkspace(null)
       setIsDeleteDialogOpen(false)
@@ -99,7 +99,7 @@ function Workspaces() {
     }
 
     try {
-      await updateWorkspace(selectedWorkspace.workspace_id, name, USER_ID)
+      await updateWorkspace(selectedWorkspace.workspace_id, name)
       await loadWorkspaces()
       setIsEditDialogOpen(false)
       setSelectedWorkspace(null)

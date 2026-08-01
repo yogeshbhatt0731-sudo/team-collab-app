@@ -6,7 +6,6 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { getMyProjects } from "../services/projectService";
 
-const USER_ID = 1;
 const projectColors = [
     "#5b2ee8",
     "#0f9f6e",
@@ -30,7 +29,7 @@ function MyProjects() {
     useEffect(() => {
         async function loadProjects() {
             try {
-                setProjects(await getMyProjects(USER_ID));
+                setProjects(await getMyProjects());
             } catch (requestError) {
                 setError(
                     requestError.response?.data?.message ||
@@ -54,7 +53,6 @@ function MyProjects() {
             `/workspace/${project.workspaceId}/project/${project.projectId}`,
             {
                 state: {
-                    userId: USER_ID,
                     project: {
                         id: project.projectId,
                         name: project.projectName,
