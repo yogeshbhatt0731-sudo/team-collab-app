@@ -2,9 +2,12 @@ package com.teamcollab.workspaceservice.workspace.service;
 
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
+import com.teamcollab.workspaceservice.common.dtos.UserDetailsDTO;
 import com.teamcollab.workspaceservice.common.exception.UnauthorizedException;
+import com.teamcollab.workspaceservice.common.feign.AuthServiceClient;
 import com.teamcollab.workspaceservice.workspace.exception.WorkspaceNotFoundException;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto;
+import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceMemberDTO;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceRequestDto;
 import com.teamcollab.workspaceservice.workspace.entities.Role;
 import com.teamcollab.workspaceservice.workspace.entities.Workspace;
@@ -18,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = false)
@@ -25,6 +30,7 @@ import java.util.List;
 public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceUserRepository workspaceUserRepository;
+    private final AuthServiceClient authServiceClient;
     private final ModelMapper modelMapper;
 
     public boolean exists(Long workspaceId){
@@ -129,5 +135,36 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
 
         return new ApiResponse("success", "ws deleted");
+    }
+
+    @Override
+    public List<WorkspaceMemberDTO> getWorkspaceMembers(Long workspaceId) {
+        if (!workspaceRepository.existsById(workspaceId)) {
+            throw new WorkspaceNotFoundException("Workspace not found");
+        }
+
+        List<WorkspaceUser> workspaceUsers = workspaceUserRepository.findByWorkspaceId(workspaceId);
+
+        List<Long> userIds = workspaceUsers.stream()
+                .map(wu -> wu.getWorkspaceUserId().getUserId())
+                .toList();
+
+        Map<Long, Role> roleMap = workspaceUsers.stream()
+                .collect(Collectors.toMap(
+                        wu -> wu.getWorkspaceUserId().getUserId(),
+                        WorkspaceUser::getRole
+                ));
+
+        List<UserDetailsDTO> profiles = authServiceClient.getUsersById(userIds);
+
+        return profiles.stream()
+                .map(p -> new WorkspaceMemberDTO(
+                        p.userId(),
+                        p.name(),
+                        p.email(),
+                        p.userName(),
+                        roleMap.getOrDefault(p.userId(), Role.MEMBER)
+                ))
+                .toList();
     }
 }

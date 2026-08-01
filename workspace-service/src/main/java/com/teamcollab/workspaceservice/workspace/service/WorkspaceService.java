@@ -2,6 +2,7 @@ package com.teamcollab.workspaceservice.workspace.service;
 
 import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto;
+import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceMemberDTO;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceRequestDto;
 import com.teamcollab.workspaceservice.workspace.entities.Workspace;
 
@@ -24,4 +25,6 @@ public interface WorkspaceService {
 	public ApiResponse updateWorkspace(Long workspaceId, WorkspaceRequestDto workspaceRequestDto);
 
 	ApiResponse deleteWorkspace(Long userId, Long workspaceId);
+
+	List<WorkspaceMemberDTO> getWorkspaceMembers(Long workspaceId);
 }
