@@ -1,9 +1,8 @@
 import axios from 'axios'
-import { AUTH_BASE_URL } from './config'
+import { API_BASE_URL } from './config'
 
-// LoginRequestDTO wants { userName, password } — login is by username, not email.
 export async function loginUser(userName, password) {
-  const url = AUTH_BASE_URL + '/auth/login'
+  const url = API_BASE_URL + '/auth/login'
   try {
     const response = await axios.post(url, { userName, password })
     return { status: true, data: response.data }
@@ -17,7 +16,7 @@ export async function loginUser(userName, password) {
 
 // RegisterRequestDTO wants { name, email, userName, password }.
 export async function registerUser(firstName, lastName, email, userName, password) {
-  const url = AUTH_BASE_URL + '/auth/register'
+  const url = API_BASE_URL + '/auth/register'
   const name = firstName + ' ' + lastName
   const body = { name, email, userName, password }
 
