@@ -3,19 +3,17 @@ pipeline {
 
     environment {
         // ---- image ----
-        IMAGE_NAME = "yogesh177/team-collab-client"
-        IMAGE_TAG  = "${BUILD_NUMBER}"          // unique per build (1, 2, 3 ...)
+        IMAGE_NAME = "yogesh177/team-collab-api-gateway"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
 
-        // ---- inst2 (deploy server) ---- same GCP dev server as workspace-service
+        // ---- inst2 (deploy server) ----
         DEV_SERVER = "8.231.96.214"
         DEV_USER   = "yogeshbhatt"
 
         // ---- dev container settings on inst2 ----
-        APP_NAME   = "frontend"
-        HOST_PORT  = "80"                        // browser reaches the app here
-
-        // All traffic goes through the API gateway on port 8080.
-        BACKEND_URL = "http://8.231.96.214:8080"
+        APP_NAME   = "api-gateway-dev"
+        HOST_PORT  = "8080"
+        NETWORK    = "dev-net"
     }
 
     stages {
@@ -24,14 +22,11 @@ pipeline {
             steps { checkout scm }
         }
 
-        // Vite bakes VITE_API_BASE_URL into the bundle at build time,
-        // so the backend URL is passed as a build-arg (not a runtime env).
         stage('Build Image') {
             steps {
-                dir('client') {
+                dir('api-gateway') {
                     sh """
                     docker build \
-                      --build-arg VITE_API_BASE_URL=${BACKEND_URL} \
                       -t ${IMAGE_NAME}:${IMAGE_TAG} \
                       -t ${IMAGE_NAME}:develop-latest .
                     """
@@ -59,14 +54,13 @@ pipeline {
             }
         }
 
-
         stage('Deploy To Dev') {
-
-
             steps {
                 sshagent(['deploy-server-key']) {
                     sh """
                     ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
+                        docker network create ${NETWORK} || true
+
                         docker pull ${IMAGE_NAME}:develop-latest
 
                         docker stop ${APP_NAME} || true
@@ -74,7 +68,9 @@ pipeline {
 
                         docker run -d \
                             --name ${APP_NAME} \
-                            -p ${HOST_PORT}:80 \
+                            --network ${NETWORK} \
+                            -p ${HOST_PORT}:8080 \
+                            -e EUREKA_URL="http://eureka-server-dev:8761/eureka/" \
                             --restart unless-stopped \
                             ${IMAGE_NAME}:develop-latest
                     '
@@ -86,7 +82,7 @@ pipeline {
 
     post {
         always  { sh 'docker logout || true' }
-        success { echo "client ${BUILD_NUMBER} deployed to DEV (port ${HOST_PORT})." }
-        failure { echo "client ${BUILD_NUMBER} FAILED." }
+        success { echo "api-gateway ${BUILD_NUMBER} deployed to DEV (port ${HOST_PORT})." }
+        failure { echo "api-gateway ${BUILD_NUMBER} FAILED." }
     }
 }

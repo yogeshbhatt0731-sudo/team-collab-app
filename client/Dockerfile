@@ -4,13 +4,9 @@ WORKDIR /app
 
 # Vite bakes env vars into the bundle at BUILD time, so the backend URL
 # must be known here. Jenkins passes it:
-#   --build-arg VITE_API_BASE_URL=http://8.231.96.214:8082
+#   --build-arg VITE_API_BASE_URL=http://8.231.96.214:8080
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
-# Auth service is a separate backend on its own port; same build-time trick.
-ARG VITE_AUTH_BASE_URL
-ENV VITE_AUTH_BASE_URL=$VITE_AUTH_BASE_URL
 
 # Optional: Syncfusion license key (main.jsx reads VITE_SYNCFUSION_LICENSE)
 ARG VITE_SYNCFUSION_LICENSE

@@ -13,7 +13,6 @@ import com.teamcollab.workspaceservice.task.service.CommentService;
 
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = {"http://localhost:5173", "http://8.231.96.214"}, allowedHeaders = "*")
 @RestController
 @RequestMapping("/task")
 @RequiredArgsConstructor
