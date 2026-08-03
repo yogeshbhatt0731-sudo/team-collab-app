@@ -27,4 +27,5 @@ public interface WorkspaceService {
 	ApiResponse deleteWorkspace(Long userId, Long workspaceId);
 
 	List<WorkspaceMemberDTO> getWorkspaceMembers(Long workspaceId);
+
 }

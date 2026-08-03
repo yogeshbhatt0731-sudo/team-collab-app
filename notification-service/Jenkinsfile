@@ -1,0 +1,146 @@
+pipeline {
+    agent any
+
+    environment {
+        // ---- image ----
+        IMAGE_NAME = "yogesh177/team-collab-notification-service"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+
+        // ---- inst2 (deploy server) ----
+        DEV_SERVER = "8.231.96.214"
+        DEV_USER   = "yogeshbhatt"
+
+        // ---- dev container settings on inst2 ----
+        APP_NAME   = "notification-service-dev"
+        NETWORK    = "dev-net"
+
+        // ---- RabbitMQ ----
+        RABBITMQ_HOST  = "rabbitmq-dev"
+        RABBITMQ_PORT  = "5672"
+        RABBITMQ_QUEUE = "notification.email.queue"
+
+        // ---- Email ----
+        EMAIL_HOST = "smtp.gmail.com"
+        EMAIL_PORT = "587"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+
+        // Multi-stage Dockerfile restores, publishes and packages
+        // the .NET Notification Service.
+        stage('Build Image') {
+            steps {
+                sh """
+                    docker build \
+                      -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                      -t ${IMAGE_NAME}:develop-latest .
+                """
+            }
+        }
+
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASS" |
+                        docker login \
+                          -u "$DOCKER_USER" \
+                          --password-stdin
+                    '''
+                }
+            }
+        }
+
+
+        stage('Push Image') {
+            steps {
+                sh """
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:develop-latest
+                """
+            }
+        }
+
+
+        stage('Deploy To Dev') {
+            steps {
+
+                withCredentials([
+
+                    usernamePassword(
+                        credentialsId: 'rabbitmq-dev-creds',
+                        usernameVariable: 'RABBIT_USER',
+                        passwordVariable: 'RABBIT_PASS'
+                    ),
+
+                    usernamePassword(
+                        credentialsId: 'smtp-creds',
+                        usernameVariable: 'EMAIL_USER',
+                        passwordVariable: 'EMAIL_PASS'
+                    )
+
+                ]) {
+
+                    sshagent(['deploy-server-key']) {
+
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
+
+                            docker network create ${NETWORK} || true
+
+                            docker pull ${IMAGE_NAME}:develop-latest
+
+                            docker stop ${APP_NAME} || true
+                            docker rm ${APP_NAME} || true
+
+                            docker run -d \
+                                --name ${APP_NAME} \
+                                --network ${NETWORK} \
+                                -e RabbitMQ__Host="${RABBITMQ_HOST}" \
+                                -e RabbitMQ__Port="${RABBITMQ_PORT}" \
+                                -e RabbitMQ__Username="${RABBIT_USER}" \
+                                -e RabbitMQ__Password="${RABBIT_PASS}" \
+                                -e RabbitMQ__Queue="${RABBITMQ_QUEUE}" \
+                                -e Email__Host="${EMAIL_HOST}" \
+                                -e Email__Port="${EMAIL_PORT}" \
+                                -e Email__Username="${EMAIL_USER}" \
+                                -e Email__Password="${EMAIL_PASS}" \
+                                --restart unless-stopped \
+                                ${IMAGE_NAME}:develop-latest
+                        '
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+
+    post {
+        always {
+            sh 'docker logout || true'
+        }
+
+        success {
+            echo "notification-service ${BUILD_NUMBER} deployed to DEV."
+        }
+
+        failure {
+            echo "notification-service ${BUILD_NUMBER} FAILED."
+        }
+    }
+}
