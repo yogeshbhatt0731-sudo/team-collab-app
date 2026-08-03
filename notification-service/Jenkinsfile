@@ -6,15 +6,17 @@ pipeline {
         IMAGE_NAME = "yogesh177/team-collab-notification-service"
         IMAGE_TAG  = "${BUILD_NUMBER}"
 
-        // ---- inst2 (deploy server) ----
+        // ---- dev server ----
         DEV_SERVER = "8.231.96.214"
         DEV_USER   = "yogeshbhatt"
 
-        // ---- dev container settings on inst2 ----
-        APP_NAME   = "notification-service-dev"
-        NETWORK    = "dev-net"
+        // ---- notification service ----
+        APP_NAME = "notification-service-dev"
+        NETWORK  = "dev-net"
 
         // ---- RabbitMQ ----
+        RABBITMQ_NAME  = "rabbitmq-dev"
+        RABBITMQ_IMAGE = "rabbitmq:4-management"
         RABBITMQ_HOST  = "rabbitmq-dev"
         RABBITMQ_PORT  = "5672"
         RABBITMQ_QUEUE = "notification.email.queue"
@@ -33,9 +35,7 @@ pipeline {
         }
 
 
-        // Multi-stage Dockerfile restores, publishes and packages
-        // the .NET Notification Service.
-       stage('Build Image') {
+        stage('Build Image') {
             steps {
                 dir('notification-service') {
                     sh """
@@ -58,10 +58,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        echo "$DOCKER_PASS" |
-                        docker login \
-                          -u "$DOCKER_USER" \
-                          --password-stdin
+                        echo "$DOCKER_PASS" | \
+                        docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
@@ -74,6 +72,52 @@ pipeline {
                     docker push ${IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${IMAGE_NAME}:develop-latest
                 """
+            }
+        }
+
+
+        stage('Setup RabbitMQ') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'rabbitmq-dev-creds',
+                        usernameVariable: 'RABBIT_USER',
+                        passwordVariable: 'RABBIT_PASS'
+                    )
+                ]) {
+
+                    sshagent(['deploy-server-key']) {
+
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
+
+                                docker network inspect ${NETWORK} >/dev/null 2>&1 \
+                                    || docker network create ${NETWORK}
+
+                                if ! docker ps --format "{{.Names}}" \
+                                    | grep -q "^${RABBITMQ_NAME}\$"; then
+
+                                    docker rm -f ${RABBITMQ_NAME} 2>/dev/null || true
+
+                                    docker run -d \
+                                        --name ${RABBITMQ_NAME} \
+                                        --network ${NETWORK} \
+                                        --restart unless-stopped \
+                                        -p 15672:15672 \
+                                        -e RABBITMQ_DEFAULT_USER="${RABBIT_USER}" \
+                                        -e RABBITMQ_DEFAULT_PASS="${RABBIT_PASS}" \
+                                        ${RABBITMQ_IMAGE}
+                                fi
+
+                                until docker exec ${RABBITMQ_NAME} \
+                                    rabbitmq-diagnostics -q ping
+                                do
+                                    sleep 3
+                                done
+                            '
+                        """
+                    }
+                }
             }
         }
 
@@ -100,30 +144,28 @@ pipeline {
                     sshagent(['deploy-server-key']) {
 
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
+                            ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
 
-                            docker network create ${NETWORK} || true
+                                docker pull ${IMAGE_NAME}:develop-latest
 
-                            docker pull ${IMAGE_NAME}:develop-latest
+                                docker stop ${APP_NAME} || true
+                                docker rm ${APP_NAME} || true
 
-                            docker stop ${APP_NAME} || true
-                            docker rm ${APP_NAME} || true
-
-                            docker run -d \
-                                --name ${APP_NAME} \
-                                --network ${NETWORK} \
-                                -e RabbitMQ__Host="${RABBITMQ_HOST}" \
-                                -e RabbitMQ__Port="${RABBITMQ_PORT}" \
-                                -e RabbitMQ__Username="${RABBIT_USER}" \
-                                -e RabbitMQ__Password="${RABBIT_PASS}" \
-                                -e RabbitMQ__Queue="${RABBITMQ_QUEUE}" \
-                                -e Email__Host="${EMAIL_HOST}" \
-                                -e Email__Port="${EMAIL_PORT}" \
-                                -e Email__Username="${EMAIL_USER}" \
-                                -e Email__Password="${EMAIL_PASS}" \
-                                --restart unless-stopped \
-                                ${IMAGE_NAME}:develop-latest
-                        '
+                                docker run -d \
+                                    --name ${APP_NAME} \
+                                    --network ${NETWORK} \
+                                    --restart unless-stopped \
+                                    -e RabbitMQ__Host="${RABBITMQ_HOST}" \
+                                    -e RabbitMQ__Port="${RABBITMQ_PORT}" \
+                                    -e RabbitMQ__Username="${RABBIT_USER}" \
+                                    -e RabbitMQ__Password="${RABBIT_PASS}" \
+                                    -e RabbitMQ__Queue="${RABBITMQ_QUEUE}" \
+                                    -e Email__Host="${EMAIL_HOST}" \
+                                    -e Email__Port="${EMAIL_PORT}" \
+                                    -e Email__Username="${EMAIL_USER}" \
+                                    -e Email__Password="${EMAIL_PASS}" \
+                                    ${IMAGE_NAME}:develop-latest
+                            '
                         """
                     }
                 }
