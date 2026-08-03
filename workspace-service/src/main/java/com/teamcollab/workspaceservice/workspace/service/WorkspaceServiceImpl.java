@@ -5,6 +5,8 @@ import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.common.dtos.UserDetailsDTO;
 import com.teamcollab.workspaceservice.common.exception.UnauthorizedException;
 import com.teamcollab.workspaceservice.common.feign.AuthServiceClient;
+import com.teamcollab.workspaceservice.common.messaging.RabbitMQPublisher;
+import com.teamcollab.workspaceservice.workspace.event.WorkspaceCreatedEvent;
 import com.teamcollab.workspaceservice.workspace.exception.WorkspaceNotFoundException;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceMemberDTO;
@@ -20,8 +22,11 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +37,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceUserRepository workspaceUserRepository;
     private final AuthServiceClient authServiceClient;
     private final ModelMapper modelMapper;
+    private final RabbitMQPublisher publisher;
 
     public boolean exists(Long workspaceId){
         return workspaceRepository.existsById(workspaceId);
@@ -52,6 +58,18 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         workspaceUser.setRole(Role.OWNER);
 
         workspaceUserRepository.save(workspaceUser);
+        List<Long> list = List.of(userId);
+
+        WorkspaceCreatedEvent workspaceCreatedEvent = new WorkspaceCreatedEvent()
+                .builder()
+                .eventId(UUID.randomUUID())
+                .workspaceName(request.getName())
+                .createdBy(authServiceClient.getUsersById(list).get(0).userName())
+                .createdByEmail(authServiceClient.getUsersById(list).get(0).email())
+                .occurredOn(LocalDateTime.now())
+                .build();
+
+        publisher.publishWorkspaceCreated(workspaceCreatedEvent);
 
         return new ApiResponse("success", "Created " + workspace.getName() + " Successfully");
 
@@ -72,7 +90,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public List<WorkspaceDetailRespDto> getAllWorkspace(Long userId) {
-//        List<Workspace> list = workspaceRepository.findByCreatedBy(userId);
         List<WorkspaceDetailRespDto> list = workspaceRepository.findAllWorkspace(userId);
         return list;
     }
@@ -92,30 +109,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public ApiResponse deleteWorkspace(Long userId, Long workspaceId) {
-
-//        //get workspaceuser by userid
-//        WorkspaceUser workspaceUser = workspaceUserRepository.workspaceUserFindByUserId(userId);
-//        System.out.println("ws: " + workspaceUser);
-//
-//
-//        //check user is eligible or not to delete
-//        if(workspaceUser.getRole() != Role.OWNER) {
-//            throw new UnauthorizedException("Unauthorize Access!!! Only Owner Can delete workspace");
-//        }
-//
-//        //get all worksapces for workspaceid
-//        List<WorkspaceUser> workspaceUserList = workspaceUserRepository.findByWorkspaceId(workspaceId);
-//
-//        //delete all workspaces;
-//        workspaceUserRepository.deleteAll(workspaceUserList);
-//
-////        for(WorkspaceUser w : workspaceUserList)
-////            System.out.println(w.getWorkspaceUserId() + "" + w.getRole());
-//
-//        //get Workspace by workspaceid and delete it
-//        workspaceRepository.deleteById(workspaceId);
-
-
 
         WorkspaceUserId id = new WorkspaceUserId(workspaceId, userId);
 
