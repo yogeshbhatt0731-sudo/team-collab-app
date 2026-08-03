@@ -35,13 +35,15 @@ pipeline {
 
         // Multi-stage Dockerfile restores, publishes and packages
         // the .NET Notification Service.
-        stage('Build Image') {
+       stage('Build Image') {
             steps {
-                sh """
-                    docker build \
-                      -t ${IMAGE_NAME}:${IMAGE_TAG} \
-                      -t ${IMAGE_NAME}:develop-latest .
-                """
+                dir('notification-service') {
+                    sh """
+                        docker build \
+                          -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                          -t ${IMAGE_NAME}:develop-latest .
+                    """
+                }
             }
         }
 
