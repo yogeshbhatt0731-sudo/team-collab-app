@@ -164,6 +164,7 @@ pipeline {
                                     -e Email__Port="${EMAIL_PORT}" \
                                     -e Email__Username="${EMAIL_USER}" \
                                     -e Email__Password="${EMAIL_PASS}" \
+                                    -e Email__From="${EMAIL_USER}" \
                                     ${IMAGE_NAME}:develop-latest
                             '
                         """
