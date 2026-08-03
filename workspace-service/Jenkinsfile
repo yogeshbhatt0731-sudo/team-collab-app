@@ -64,7 +64,14 @@ pipeline {
         stage('Deploy To Dev') {
 
             steps {
-                withCredentials([string(credentialsId: 'mysql-dev-password', variable: 'DB_PASS')]) {
+                withCredentials([
+                    string(credentialsId: 'mysql-dev-password', variable: 'DB_PASS'),
+                    usernamePassword(
+                        credentialsId: 'rabbitmq-dev-creds',
+                        usernameVariable: 'RABBIT_USER',
+                        passwordVariable: 'RABBIT_PASS'
+                    )
+                ]) {
                     sshagent(['deploy-server-key']) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
@@ -83,6 +90,9 @@ pipeline {
                                 -e SPRING_DATASOURCE_USERNAME="root" \
                                 -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
                                 -e EUREKA_URL="http://eureka-server-dev:8761/eureka/" \
+                                -e RABBITMQ_HOST="rabbitmq-dev" \
+                                -e RABBITMQ_USERNAME="${RABBIT_USER}" \
+                                -e RABBITMQ_PASSWORD="${RABBIT_PASS}" \
                                 --restart unless-stopped \
                                 ${IMAGE_NAME}:develop-latest
                         '
