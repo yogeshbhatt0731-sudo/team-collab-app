@@ -9,11 +9,11 @@ namespace NotificationService.Events
     {
         public Guid EventId { get; set; }
 
-        public string WorkspaceId { get; set; } = string.Empty;
+        public long WorkspaceId { get; set; }
 
         public string WorkspaceName { get; set; } = string.Empty;
 
-        public string AddedUserId { get; set; } = string.Empty;
+        public long AddedUserId { get; set; }
 
         public string AddedUserName { get; set; } = string.Empty;
 
