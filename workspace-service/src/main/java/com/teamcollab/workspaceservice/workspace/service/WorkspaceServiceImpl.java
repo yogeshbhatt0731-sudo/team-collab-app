@@ -7,6 +7,7 @@ import com.teamcollab.workspaceservice.common.exception.UnauthorizedException;
 import com.teamcollab.workspaceservice.common.feign.AuthServiceClient;
 import com.teamcollab.workspaceservice.common.messaging.RabbitMQPublisher;
 import com.teamcollab.workspaceservice.workspace.event.WorkspaceCreatedEvent;
+import com.teamcollab.workspaceservice.workspace.event.WorkspaceUserAddedEvent;
 import com.teamcollab.workspaceservice.workspace.exception.WorkspaceNotFoundException;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceDetailRespDto;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceMemberDTO;
@@ -128,6 +129,43 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
 
         return new ApiResponse("success", "ws deleted");
+    }
+
+    @Override
+    public ApiResponse addMember(Long inviterId, Long workspaceId, String email) {
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new WorkspaceNotFoundException("Workspace not found"));
+
+        UserDetailsDTO invitee = authServiceClient.getUserByEmail(email);
+
+        WorkspaceUserId wsUserId = new WorkspaceUserId(workspaceId, invitee.userId());
+
+        if (workspaceUserRepository.findById(wsUserId).isPresent()) {
+            throw new IllegalArgumentException("User is already a member of this workspace");
+        }
+
+        WorkspaceUser workspaceUser = new WorkspaceUser();
+        workspaceUser.setWorkspaceUserId(wsUserId);
+        workspaceUser.setRole(Role.MEMBER);
+        workspaceUserRepository.save(workspaceUser);
+
+        UserDetailsDTO inviter = authServiceClient.getUsersById(List.of(inviterId)).get(0);
+
+        WorkspaceUserAddedEvent event = WorkspaceUserAddedEvent.builder()
+                .eventId(UUID.randomUUID())
+                .workspaceId(workspaceId)
+                .workspaceName(workspace.getName())
+                .addedUserId(invitee.userId())
+                .addedUserName(invitee.name())
+                .addedUserEmail(invitee.email())
+                .role(Role.MEMBER.name())
+                .addedBy(inviter.name())
+                .occurredOn(LocalDateTime.now())
+                .build();
+
+        publisher.publishWorkspaceUserAdded(event);
+
+        return new ApiResponse("success", invitee.name() + " added to " + workspace.getName());
     }
 
     @Override

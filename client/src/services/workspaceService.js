@@ -40,3 +40,10 @@ export async function getWorkspaceMembers(workspaceId) {
   const response = await api.get(`/workspaces/${workspaceId}/members`)
   return response.data
 }
+
+export async function inviteMember(workspaceId, email) {
+  const response = await api.post(`/workspaces/${workspaceId}/members`, { email }, {
+    headers: { 'X-Workspace-Id': workspaceId },
+  })
+  return response.data
+}

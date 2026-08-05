@@ -40,4 +40,10 @@ public class AuthController {
 
         return ResponseEntity.ok(authService.getUsersById(ids));
     }
+
+    // Endpoint - GET /auth/users/email?email=xyz@gmail.com
+    @GetMapping("/users/email")
+    public ResponseEntity<?> getUserByEmail(@RequestParam(name = "email") String email) {
+        return ResponseEntity.ok(authService.getUserByEmail(email));
+    }
 }

@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/task/**").hasAnyRole("OWNER", "MEMBER")
                         .requestMatchers(HttpMethod.GET, "/feature/**").authenticated()
                         .requestMatchers("/feature/**").hasAnyRole("OWNER", "MEMBER")
+                        .requestMatchers(HttpMethod.POST, "/workspaces/*/members").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/workspaces/*/projects").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/projects/*").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/projects/*").hasRole("OWNER")

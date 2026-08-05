@@ -28,4 +28,6 @@ public interface WorkspaceService {
 
 	List<WorkspaceMemberDTO> getWorkspaceMembers(Long workspaceId);
 
+	ApiResponse addMember(Long inviterId, Long workspaceId, String email);
+
 }

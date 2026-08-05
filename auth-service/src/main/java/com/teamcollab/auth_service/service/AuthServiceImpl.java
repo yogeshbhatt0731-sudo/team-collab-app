@@ -75,4 +75,10 @@ public class AuthServiceImpl implements AuthService{
     public List<UserDetailsDTO> getUsersById(List<Long> ids) {
         return userRepository.findAllByUserIds(ids);
     }
+
+    @Override
+    public UserDetailsDTO getUserByEmail(String email) {
+        return userRepository.findUserDetailsByEmail(email)
+                .orElseThrow(() -> new com.teamcollab.auth_service.exception.UserNotFoundException("User not registered yet"));
+    }
 }
