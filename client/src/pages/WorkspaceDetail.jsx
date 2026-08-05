@@ -17,12 +17,12 @@ import {
 
 const accent = "#5b2ee8";
 
-function InfoCard({ label, value, detail, color }) {
+function InfoCard({ icon, label, value, detail, color }) {
     return (
         <div
             style={{
-                background: "#fff",
-                border: "1px solid #eaecf0",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 18,
                 display: "flex",
@@ -36,23 +36,21 @@ function InfoCard({ label, value, detail, color }) {
                     width: 44,
                     height: 44,
                     borderRadius: 11,
-                    background: `${color}16`,
+                    background: `${color}14`,
                     color,
                     display: "grid",
                     placeItems: "center",
-                    fontSize: 20,
-                    fontWeight: 800,
                 }}
             >
-                ◈
+                {icon}
             </div>
             <div>
-                <div style={{ color: "#667085", fontSize: 13 }}>{label}</div>
+                <div style={{ color: "var(--muted)", fontSize: 13 }}>{label}</div>
                 <div
                     style={{
                         fontWeight: 800,
                         fontSize: 25,
-                        color: "#101828",
+                        color: "var(--text)",
                         marginTop: 2,
                     }}
                 >
@@ -60,7 +58,7 @@ function InfoCard({ label, value, detail, color }) {
                 </div>
                 {detail && (
                     <div
-                        style={{ color: "#667085", fontSize: 12, marginTop: 2 }}
+                        style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}
                     >
                         {detail}
                     </div>
@@ -69,6 +67,22 @@ function InfoCard({ label, value, detail, color }) {
         </div>
     );
 }
+
+const iconProject = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+);
+const iconRole = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+);
+const iconId = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2" /><rect x="2" y="14" width="20" height="8" rx="2" ry="2" /><line x1="6" y1="6" x2="6.01" y2="6" /><line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+);
 
 function WorkspaceDetail() {
     const { workspaceId } = useParams();
@@ -175,8 +189,8 @@ function WorkspaceDetail() {
             style={{
                 minHeight: "100vh",
                 display: "flex",
-                background: "#f8f9fd",
-                color: "#101828",
+                background: "var(--app-bg)",
+                color: "var(--text)",
             }}
         >
             <Sidebar />
@@ -199,7 +213,7 @@ function WorkspaceDetail() {
                             border: 0,
                             background: "transparent",
                             padding: 0,
-                            color: "#667085",
+                            color: "var(--muted)",
                             cursor: "pointer",
                             fontSize: 14,
                             marginBottom: 24,
@@ -216,7 +230,7 @@ function WorkspaceDetail() {
                                 minHeight: 360,
                             }}
                         >
-                            <p style={{ color: "#667085" }}>
+                            <p style={{ color: "var(--muted)" }}>
                                 Loading workspace...
                             </p>
                         </div>
@@ -235,8 +249,8 @@ function WorkspaceDetail() {
                         <>
                             <section
                                 style={{
-                                    background: "#fff",
-                                    border: "1px solid #eaecf0",
+                                    background: "var(--surface)",
+                                    border: "1px solid var(--border)",
                                     borderRadius: 15,
                                     padding: "24px clamp(20px, 3vw, 32px)",
                                     display: "flex",
@@ -284,11 +298,11 @@ function WorkspaceDetail() {
                                                 background:
                                                     role === "OWNER"
                                                         ? "#ede9fe"
-                                                        : "#f2f4f7",
+                                                        : "#f0fdf4",
                                                 color:
                                                     role === "OWNER"
                                                         ? accent
-                                                        : "#475467",
+                                                        : "#15803d",
                                                 fontWeight: 750,
                                                 fontSize: 11,
                                                 letterSpacing: ".25px",
@@ -308,7 +322,7 @@ function WorkspaceDetail() {
                                         <p
                                             style={{
                                                 margin: 0,
-                                                color: "#667085",
+                                                color: "var(--muted)",
                                                 fontSize: 14,
                                             }}
                                         >
@@ -360,7 +374,7 @@ function WorkspaceDetail() {
                                 style={{
                                     display: "flex",
                                     gap: 28,
-                                    borderBottom: "1px solid #eaecf0",
+                                    borderBottom: "1px solid var(--border)",
                                     marginTop: 26,
                                     overflowX: "auto",
                                 }}
@@ -382,10 +396,11 @@ function WorkspaceDetail() {
                                             color:
                                                 index === 0
                                                     ? accent
-                                                    : "#667085",
+                                                    : "var(--muted)",
                                             fontWeight: index === 0 ? 750 : 550,
                                             whiteSpace: "nowrap",
                                             fontSize: 14,
+                                            cursor: "pointer",
                                         }}
                                     >
                                         {item}
@@ -403,12 +418,14 @@ function WorkspaceDetail() {
                                 }}
                             >
                                 <InfoCard
+                                    icon={iconProject}
                                     label="Projects"
                                     value={projects.length}
                                     detail="Available in this workspace"
                                     color={accent}
                                 />
                                 <InfoCard
+                                    icon={iconRole}
                                     label="Your Role"
                                     value={
                                         role === "OWNER" ? "Owner" : "Member"
@@ -423,6 +440,7 @@ function WorkspaceDetail() {
                                     }
                                 />
                                 <InfoCard
+                                    icon={iconId}
                                     label="Workspace ID"
                                     value={`#${workspace.id || workspaceId}`}
                                     detail="Use this to identify the workspace"
@@ -432,8 +450,8 @@ function WorkspaceDetail() {
 
                             <section
                                 style={{
-                                    background: "#fff",
-                                    border: "1px solid #eaecf0",
+                                    background: "var(--surface)",
+                                    border: "1px solid var(--border)",
                                     borderRadius: 14,
                                     overflow: "hidden",
                                     boxShadow:
@@ -443,7 +461,7 @@ function WorkspaceDetail() {
                                 <div
                                     style={{
                                         padding: "20px 22px",
-                                        borderBottom: "1px solid #eaecf0",
+                                        borderBottom: "1px solid var(--border)",
                                         display: "flex",
                                         justifyContent: "space-between",
                                         gap: 16,
@@ -458,7 +476,7 @@ function WorkspaceDetail() {
                                         <p
                                             style={{
                                                 margin: "4px 0 0",
-                                                color: "#667085",
+                                                color: "var(--muted)",
                                                 fontSize: 13,
                                             }}
                                         >
@@ -495,7 +513,7 @@ function WorkspaceDetail() {
                                         <p
                                             style={{
                                                 margin: 0,
-                                                color: "#667085",
+                                                color: "var(--muted)",
                                             }}
                                         >
                                             {searchTerm
@@ -529,13 +547,13 @@ function WorkspaceDetail() {
                                                         )
                                                     }
                                                     style={{
-                                                        border: "1px solid #e4e7ec",
+                                                        border: "1px solid var(--border)",
                                                         borderRadius: 11,
                                                         padding: 17,
                                                         cursor: "pointer",
                                                         transition:
                                                             "transform .15s ease, box-shadow .15s ease",
-                                                        background: "#fff",
+                                                        background: "var(--surface)",
                                                     }}
                                                 >
                                                     <div
@@ -628,7 +646,7 @@ function WorkspaceDetail() {
                                                     <p
                                                         style={{
                                                             margin: 0,
-                                                            color: "#667085",
+                                                            color: "var(--muted)",
                                                             fontSize: 13,
                                                         }}
                                                     >
