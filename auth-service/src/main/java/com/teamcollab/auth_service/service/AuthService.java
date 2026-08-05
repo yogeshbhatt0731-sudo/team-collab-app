@@ -11,4 +11,6 @@ public interface AuthService {
     LoginResponseDTO login(LoginRequestDTO loginRequestDTO);
 
     List<UserDetailsDTO> getUsersById(List<Long> ids);
+
+    UserDetailsDTO getUserByEmail(String email);
 }

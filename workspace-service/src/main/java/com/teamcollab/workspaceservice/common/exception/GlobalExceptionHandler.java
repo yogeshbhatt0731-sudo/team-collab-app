@@ -4,6 +4,7 @@ import com.teamcollab.workspaceservice.common.dtos.ApiResponse;
 import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintStatusTransitionException;
 import com.teamcollab.workspaceservice.sprint.exception.InvalidSprintUpdationException;
 import com.teamcollab.workspaceservice.task.exception.*;
+import feign.FeignException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -57,6 +58,16 @@ public class GlobalExceptionHandler extends RuntimeException {
     public ResponseEntity<?> handleForbiddenException(ForbiddenException ex)
     {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse("Failure",ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse("Failure", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FeignException.NotFound.class)
+    public ResponseEntity<?> handleFeignNotFoundException(FeignException.NotFound ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse("Failure", "User not registered yet"));
     }
 
     @ExceptionHandler(RuntimeException.class)

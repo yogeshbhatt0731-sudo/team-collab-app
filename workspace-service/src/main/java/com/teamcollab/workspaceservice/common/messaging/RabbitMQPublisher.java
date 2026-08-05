@@ -1,6 +1,7 @@
 package com.teamcollab.workspaceservice.common.messaging;
 
 import com.teamcollab.workspaceservice.workspace.event.WorkspaceCreatedEvent;
+import com.teamcollab.workspaceservice.workspace.event.WorkspaceUserAddedEvent;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,15 @@ public class RabbitMQPublisher {
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE,
                 "workspace.created",
+                event
+        );
+    }
+
+    public void publishWorkspaceUserAdded(WorkspaceUserAddedEvent event) {
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE,
+                "workspace.user.added",
                 event
         );
     }

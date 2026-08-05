@@ -2,8 +2,10 @@ package com.teamcollab.workspaceservice.workspace.Controller;
 
 
 import com.teamcollab.workspaceservice.common.security.UserContext;
+import com.teamcollab.workspaceservice.workspace.dtos.InviteMemberRequestDto;
 import com.teamcollab.workspaceservice.workspace.dtos.WorkspaceRequestDto;
 import com.teamcollab.workspaceservice.workspace.service.WorkspaceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -102,6 +104,14 @@ public class WorkspaceController {
     @GetMapping("/{workspaceId}/members")
     public ResponseEntity<?> getWorkspaceMembers(@PathVariable Long workspaceId) {
         return ResponseEntity.ok(workspaceService.getWorkspaceMembers(workspaceId));
+    }
+
+    @PostMapping("/{workspaceId}/members")
+    public ResponseEntity<?> addMember(
+            @PathVariable Long workspaceId,
+            @Valid @RequestBody InviteMemberRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(workspaceService.addMember(userContext.getUserId(), workspaceId, request.getEmail()));
     }
 
 //    @GetMapping("/search")

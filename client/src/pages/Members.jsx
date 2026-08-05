@@ -7,7 +7,8 @@ import { DropDownButtonComponent } from '@syncfusion/ej2-react-splitbuttons'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import Modal from '../components/Modal'
-import { getWorkspaces, getWorkspaceMembers } from '../services/workspaceService'
+import { getWorkspaces, getWorkspaceMembers, inviteMember } from '../services/workspaceService'
+import { toast } from 'react-toastify'
 
 const ROLE_STYLE = {
   OWNER: { bg: '#fef3c7', fg: '#92400e' },
@@ -72,9 +73,9 @@ function Members() {
     else if (text === 'Remove from Workspace') setRemoveOpen(true)
   }
 
-  // WIRE: invite flow via email — backend endpoint not built yet.
-  // For now: modal collects email, shows a placeholder message.
-  const submitInvite = () => {
+  const [inviteLoading, setInviteLoading] = useState(false)
+
+  const submitInvite = async () => {
     const email = inviteEmail.trim().toLowerCase()
     if (!email || !email.includes('@')) {
       setInviteError('Enter a valid email address.')
@@ -84,9 +85,22 @@ function Members() {
       setInviteError('This user is already a workspace member.')
       return
     }
-    // TODO: POST /workspaces/{workspaceId}/invite { email } → then loadMembers()
-    setInviteError('Invite flow not wired yet — add users directly in workspace_user table for testing.')
-    return
+    const wsId = workspaceId || localStorage.getItem('active_workspace_id')
+    if (!wsId) return
+    setInviteLoading(true)
+    try {
+      const resp = await inviteMember(wsId, email)
+      toast.success(resp.message || 'Member added successfully')
+      setInviteOpen(false)
+      setInviteEmail('')
+      setInviteError('')
+      loadMembers()
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to add member'
+      setInviteError(msg)
+    } finally {
+      setInviteLoading(false)
+    }
   }
 
   const addExistingMember = () => {
@@ -163,8 +177,8 @@ function Members() {
         title="Invite Member"
         footer={
           <>
-            <ButtonComponent cssClass="e-flat" onClick={() => setInviteOpen(false)}>Cancel</ButtonComponent>
-            <ButtonComponent cssClass="e-primary" onClick={submitInvite}>Add Member</ButtonComponent>
+            <ButtonComponent cssClass="e-flat" onClick={() => setInviteOpen(false)} disabled={inviteLoading}>Cancel</ButtonComponent>
+            <ButtonComponent cssClass="e-primary" onClick={submitInvite} disabled={inviteLoading}>{inviteLoading ? 'Adding...' : 'Add Member'}</ButtonComponent>
           </>
         }
       >

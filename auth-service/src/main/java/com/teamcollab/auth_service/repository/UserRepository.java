@@ -28,4 +28,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select new com.teamcollab.auth_service.dto.UserDetailsDTO(u.userId,u.name,u.email,u.userName,u.createdAt) from User u" +
             " where u.userId in :ids")
     List<UserDetailsDTO> findAllByUserIds(@Param("ids") List<Long> ids);
+
+    @Query("select new com.teamcollab.auth_service.dto.UserDetailsDTO(u.userId,u.name,u.email,u.userName,u.createdAt) from User u" +
+            " where u.email = :email")
+    Optional<UserDetailsDTO> findUserDetailsByEmail(@Param("email") String email);
 }

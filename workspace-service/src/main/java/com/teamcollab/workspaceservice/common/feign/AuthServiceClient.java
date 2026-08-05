@@ -14,4 +14,7 @@ public interface AuthServiceClient {
 
     @GetMapping("/auth/users")
     List<UserDetailsDTO> getUsersById(@RequestParam(name = "ids") List<Long> ids);
+
+    @GetMapping("/auth/users/email")
+    UserDetailsDTO getUserByEmail(@RequestParam(name = "email") String email);
 }
