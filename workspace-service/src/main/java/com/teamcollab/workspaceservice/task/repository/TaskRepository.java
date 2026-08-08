@@ -38,6 +38,10 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
 			"where ta.taskUserId.userId=:uid")
 	public List<TaskResponseDTO> findTasksAssignedTo(@Param("uid") Long uid);
 
+	@Query("select new com.teamcollab.workspaceservice.task.dto.TaskResponseDTO(t.id,t.title,t.description,t.taskPriority,t.taskType,t.taskStatus,t.dueDate,t.createdAt,t.mySprint.id,t.myFeature.id) " +
+			"from Task t where t.id in :ids")
+	public List<TaskResponseDTO> findTasksByIds(@Param("ids") List<Long> ids);
+
 	// When a sprint is completed, its unfinished (non-DONE) tasks roll back to the backlog:
 	// null out their sprint FK. DONE tasks stay with the sprint as its completed history.
 	@Modifying

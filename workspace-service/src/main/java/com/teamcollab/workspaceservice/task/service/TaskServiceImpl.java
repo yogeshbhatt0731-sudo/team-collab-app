@@ -44,26 +44,30 @@ public class TaskServiceImpl implements TaskService{
     private final SprintService sprintService;
     private final FeatureService featureService;
 	private final AuthServiceClient authServiceClient;
+	private final AiService aiService;
 
 
 
 	@Transactional
 	public  ApiResponse createTask(TaskRequestDTO taskRequestDTO) {
-		
 
-		
+
+
 		// Create new Task entity
 		Task task = mapper.map(taskRequestDTO,Task.class);
-		
+
 		//associate task with the project here , by making a cross module call to fetch project entity
 		Project project = projectService.getProject(userContext.getUserId(),taskRequestDTO.getProjectID());
 		task.setMyProject(project);
-		
+
 
 		task.setCreatedBy(userContext.getUserId());
 		task.setTaskStatus(TaskStatus.TODO);
-		
-		Task createdTask = taskRepository.save(task);// saved entity 
+
+		Task createdTask = taskRepository.save(task);// saved entity
+
+		aiService.indexTask(createdTask);
+
 		return new ApiResponse("success", "Task created successfully with task id "+ createdTask.getId());
 	}
 
@@ -108,6 +112,8 @@ public class TaskServiceImpl implements TaskService{
 		// (partial-update safe).
 		mapper.map(taskUpdateDTO, task);
 
+		aiService.indexTask(task);
+
 		// dirty checking flushes the changes at commit.
 		return new ApiResponse("success","Task with "+taskId +" updated successfully !!");
 	}
@@ -139,6 +145,9 @@ public class TaskServiceImpl implements TaskService{
 		commentRepository.deleteByTask(taskId);
 
 		taskRepository.delete(task);
+
+		aiService.deleteIndex(taskId);
+
 		return new ApiResponse("success","Task with taskId "+taskId+" deleted successfully !!");
 	}
 

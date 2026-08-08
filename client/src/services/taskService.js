@@ -127,6 +127,21 @@ export async function setTaskFeature(taskId, featureId){
     }
 }
 
+// ===== AI Smart Search =====
+
+// GET /task/search?query=...&nResults=5 -> SmartSearchResponseDTO { summary, tasks }
+export async function smartSearchTasks(query, nResults = 5) {
+    try {
+        const response = await api.get('/task/search', { params: { query, nResults } })
+        return response.data
+    }
+    catch (err) {
+        console.error('smartSearchTasks failed:', err.message)
+        toast.error(err.response?.data?.message || 'AI search failed')
+        return null
+    }
+}
+
 // ===== Task Assignee endpoints =====
 
 // GET /task/{task_id}/assignees -> List<TaskAssigneeResponseDTO> [{ userId, assignedAt }]

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.teamcollab.workspaceservice.task.service.TaskService;
 import com.teamcollab.workspaceservice.task.service.CommentService;
+import com.teamcollab.workspaceservice.task.service.AiService;
 
 
 
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class TaskController {
 	private final TaskService taskService;
 	private final CommentService commentService;
+	private final AiService aiService;
 
 
 
@@ -52,6 +54,12 @@ public class TaskController {
 	 * Resp - TaskResponseDTO
 	 * 
 	 */
+
+	@GetMapping("search")
+	public ResponseEntity<?> smartSearch(@RequestParam String query, @RequestParam(defaultValue = "5") int nResults)
+	{
+		return ResponseEntity.ok(aiService.smartSearch(query, nResults));
+	}
 
 	// GET /task/assigned  ->  "My Board": tasks assigned to the current user (across all projects).
 	// No param — the user comes from X-User-Id (userContext). This is a LITERAL path, so Spring
