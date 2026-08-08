@@ -6,6 +6,7 @@ const navItems = [
   { label: 'Workspaces', path: '/workspaces' },
   { label: 'My Projects', path: '/projects' },
   { label: 'My Board', path: '/board' },
+  { label: 'AI Search', path: '/ai-search' },
   { label: 'Members', path: '/members' },
   { label: 'Settings', path: '/settings' },
 ]

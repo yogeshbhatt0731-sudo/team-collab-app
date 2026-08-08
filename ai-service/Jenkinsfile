@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // ---- image ----
-        IMAGE_NAME = "yogesh177/team-collab-workspace-service"
+        IMAGE_NAME = "yogesh177/team-collab-ai-service"
         IMAGE_TAG  = "${BUILD_NUMBER}"          // unique per build (1, 2, 3 ...)
 
         // ---- inst2 (deploy server) ----
@@ -11,11 +11,9 @@ pipeline {
         DEV_USER   = "yogeshbhatt"
 
         // ---- dev container settings on inst2 ----
-        APP_NAME   = "workspace-service-dev"
-        HOST_PORT  = "8082"                      // browser/API reaches it here
+        APP_NAME   = "ai-service-dev"
+        HOST_PORT  = "8083"                      // browser/API reaches it here
         NETWORK    = "dev-net"                   // shared dev network
-        DB_HOST    = "mysql-dev"                 // DB container name = hostname
-        DB_NAME    = "workspace_db"
     }
 
     stages {
@@ -24,12 +22,9 @@ pipeline {
             steps { checkout scm }
         }
 
-
-
-        // The multi-stage Dockerfile compiles the jar and packages it.
         stage('Build Image') {
             steps {
-                dir('workspace-service') {
+                dir('ai-service') {
                     sh """
                     docker build \
                       -t ${IMAGE_NAME}:${IMAGE_TAG} \
@@ -59,19 +54,10 @@ pipeline {
             }
         }
 
-        // Only the develop branch deploys. Feature branches can build & push
-        // but will NOT touch the running dev server.
         stage('Deploy To Dev') {
 
             steps {
-                withCredentials([
-                    string(credentialsId: 'mysql-dev-password', variable: 'DB_PASS'),
-                    usernamePassword(
-                        credentialsId: 'rabbitmq-dev-creds',
-                        usernameVariable: 'RABBIT_USER',
-                        passwordVariable: 'RABBIT_PASS'
-                    )
-                ]) {
+                withCredentials([string(credentialsId: 'groq-api-key', variable: 'GROQ_KEY')]) {
                     sshagent(['deploy-server-key']) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${DEV_USER}@${DEV_SERVER} '
@@ -85,15 +71,9 @@ pipeline {
                             docker run -d \
                                 --name ${APP_NAME} \
                                 --network ${NETWORK} \
-                                -p ${HOST_PORT}:8080 \
-                                -e SPRING_DATASOURCE_URL="jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true" \
-                                -e SPRING_DATASOURCE_USERNAME="root" \
-                                -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
-                                -e EUREKA_URL="http://eureka-server-dev:8761/eureka/" \
-                                -e RABBITMQ_HOST="rabbitmq-dev" \
-                                -e RABBITMQ_USERNAME="${RABBIT_USER}" \
-                                -e RABBITMQ_PASSWORD="${RABBIT_PASS}" \
-                                -e AI_SERVICE_URL="http://ai-service-dev:8083" \
+                                -p ${HOST_PORT}:8083 \
+                                -v ai-service-chroma-data:/app/chroma_data \
+                                -e GROQ_API_KEY="${GROQ_KEY}" \
                                 --restart unless-stopped \
                                 ${IMAGE_NAME}:develop-latest
                         '
@@ -106,7 +86,7 @@ pipeline {
 
     post {
         always  { sh 'docker logout || true' }
-        success { echo "workspace-service ${BUILD_NUMBER} deployed to DEV (port ${HOST_PORT})." }
-        failure { echo "workspace-service ${BUILD_NUMBER} FAILED." }
+        success { echo "ai-service ${BUILD_NUMBER} deployed to DEV (port ${HOST_PORT})." }
+        failure { echo "ai-service ${BUILD_NUMBER} FAILED." }
     }
 }

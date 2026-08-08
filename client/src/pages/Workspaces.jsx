@@ -47,7 +47,6 @@ function Workspaces() {
       navigate('/login')
       return
     }
-    localStorage.removeItem('active_workspace_id')
     async function initializeWorkspaces() {
       await loadWorkspaces()
     }
