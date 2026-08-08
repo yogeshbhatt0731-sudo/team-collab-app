@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 FROM python:3.12-slim
 WORKDIR /app
 
-# Run as a non-root user for security
-RUN addgroup --system appuser && adduser --system --ingroup appuser appuser
+# Run as a non-root user for security (--home /app so ChromaDB can cache the ONNX embedding model)
+RUN addgroup --system appuser && adduser --system --ingroup appuser --home /app appuser
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
