@@ -7,20 +7,25 @@ defend it in an interview or viva.
 
 ## 1. Overview
 
-Three services, split along bounded contexts, each owning its own database:
+Four services, split along bounded contexts, each owning its own data store:
 
 | Service | Responsibility | Data it owns |
 |---|---|---|
-| **Auth service** | Login, registration, issuing & signing JWTs | users, credentials |
-| **Workspace service** | Core domain — workspaces, projects, features, sprints, tasks, comments | everything except users |
+| **Auth service** | Login, registration, issuing & signing JWTs | users, credentials (MySQL) |
+| **Workspace service** | Core domain — workspaces, projects, features, sprints, tasks, comments | everything except users (MySQL) |
+| **AI service** | Natural language task search (RAG: vector search + LLM summary) | task embeddings (ChromaDB) |
 | **Notification service** | Delivering and storing notifications | notifications (read/unread) |
 
 - **Client → services**: synchronous REST, through an API gateway.
+- **Workspace → AI service**: synchronous REST (direct, not via gateway) — indexes tasks on create/update, deletes on task delete, and queries for semantic search.
 - **Workspace → Notification**: asynchronous events, through a message queue.
 - **Auth**: issues JWTs; every other service validates them *locally* by signature.
 
 > The workspace service is itself a **modular monolith** — project, sprint, task,
 > feature, and comment are modules *inside one deployable*, not separate services.
+>
+> The AI service is a **Python (FastAPI)** microservice — it uses ChromaDB for vector
+> storage and Groq (Llama 3.1 8B) via LangChain for retrieval-augmented generation.
 
 ---
 
@@ -32,9 +37,11 @@ flowchart TD
     G[API gateway<br/>routing, JWT validation]
     A[Auth service<br/>login, issues JWT]
     W[Workspace service<br/>modular monolith]
+    AI[AI service<br/>FastAPI + ChromaDB + Groq]
     N[Notification service<br/>consumes events]
     ADB[(Auth DB<br/>users, credentials)]
     WDB[(Workspace DB<br/>workspaces → tasks)]
+    VDB[(ChromaDB<br/>task embeddings)]
     NDB[(Notification DB<br/>notifications)]
 
     C --> G
@@ -43,6 +50,9 @@ flowchart TD
     G --> N
     A --> ADB
     W --> WDB
+    W -- REST: index / search / delete --> AI
+    AI --> VDB
+    AI -- Groq API --> LLM[Llama 3.1 8B]
     N --> NDB
 ```
 
@@ -135,7 +145,47 @@ doesn't know who consumes the event).
 **Defense:** *"Notifications are out-of-band work, so they go through a queue, not the
 request path."*
 
-### 4.8 Why an API gateway?
+### 4.8 Why a separate AI service instead of embedding AI in workspace-service?
+**Decision:** AI/ML search is a separate Python microservice called by workspace-service via REST.
+**Why:** The AI stack (ChromaDB, ONNX embeddings, LangChain, Groq LLM) is Python-native.
+Trying to run these inside a JVM would mean either JNDI bridges or shelling out — clunky
+and hard to maintain. A separate service lets each stack use its natural tooling.
+Additionally, the AI service has a different scaling profile (CPU-heavy embedding
+computation) and a different failure domain (an LLM API outage shouldn't break task CRUD).
+**Tradeoff:** Adds one more service to deploy and one synchronous hop on task creation.
+The REST calls are wrapped in try-catch so workspace-service degrades gracefully if the
+AI service is down — tasks still save, they just won't be indexed until the next update.
+**Defense:** *"Different runtime, different scaling needs, different failure domain —
+that's three reasons to split. And wrapping the calls in try-catch means a downstream
+outage doesn't cascade."*
+
+### 4.9 Why RAG (Retrieval-Augmented Generation) for task search?
+**Decision:** ChromaDB vector search finds relevant tasks; Groq LLM summarizes them.
+**Why:** Traditional keyword search fails on natural language queries like "what tasks
+are related to authentication?" — a task titled "Implement JWT login" wouldn't match.
+Vector embeddings capture semantic similarity, so the search is meaning-based. The LLM
+summary layer turns raw results into a human-readable answer rather than just a list.
+**Why ChromaDB:** Lightweight, embedded (no separate DB server), persistent via SQLite +
+HNSW index files. Perfect for an academic project that needs vector search without
+infrastructure overhead.
+**Why Groq:** Free-tier access to fast LLM inference (Llama 3.1 8B). The model runs on
+Groq's servers, so the AI service container stays small (no GPU required).
+**Defense:** *"RAG combines the precision of retrieval with the fluency of generation —
+the user gets both the matching tasks and a natural language summary explaining how they
+relate to their query."*
+
+### 4.10 Why workspace-service calls AI service directly (not through the API gateway)?
+**Decision:** Workspace-service calls AI service via direct REST (RestTemplate), not
+through the gateway or Eureka load balancer.
+**Why:** The AI service is a Python app — it doesn't register with Eureka (which is a
+Spring Cloud concern). Since there's only one instance and it's an internal
+service-to-service call (not client-facing), a direct URL (`http://ai-service-dev:8083`)
+is simpler and avoids adding Eureka client code to a Python project.
+**Defense:** *"Internal calls between backend services don't need to go through the
+client-facing gateway. The AI service is an implementation detail of workspace-service,
+not a public API."*
+
+### 4.11 Why an API gateway?
 **Decision:** Single entry point for the client.
 **Why:** The client doesn't need to know the service topology or juggle multiple base
 URLs; routing, JWT validation, and CORS are centralized.
