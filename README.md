@@ -2,6 +2,9 @@
 
 > A project-management and team-collaboration tool — workspaces, projects, sprints, tasks, and notifications for small teams.
 
+Live app url : http://8.231.96.214/
+
+Jenkins Build Server URL : http://8.231.79.254:8080/
 
 
 ## Overview
